@@ -97,10 +97,11 @@ export const isValidEmail = (email: string): boolean => {
 };
 
 /**
- * Validate phone number (Indian format)
+ * Validate phone number (ALL Format)
  */
 export const isValidPhone = (phone: string): boolean => {
-  const re = /^[6-9]\d{9}$/;
+  // Accepte tout ce qui fait entre 5 et 15 chiffres
+  const re = /^\d{5,15}$/;
   return re.test(phone.replace(/[\s\-()]/g, ""));
 };
 
