@@ -258,7 +258,7 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, item, onClose, mo
           <Input label="Page Number" type="number" value={formData.page_number} onChange={(e) => setFormData({ ...formData, page_number: e.target.value })} />
         </div>
         <div className="grid grid-cols-3 gap-4">
-          <Input label="Price Standard" type="number" step="0.01" value={formData.price_standard} onChange={(e) => setFormData({ ...formData, price_standard: e.target.value })} required />
+          <Input label="Price Standard" type="number" step="0.01" value={formData.price_standard} onChange={(e) => setFormData({ ...formData, price_standard: e.target.value })} />
           <Input label="Price Chicken/Pork" type="number" step="0.01" value={formData.price_chicken_pork} onChange={(e) => setFormData({ ...formData, price_chicken_pork: e.target.value })} />
           <Input label="Price Seafood" type="number" step="0.01" value={formData.price_seafood} onChange={(e) => setFormData({ ...formData, price_seafood: e.target.value })} />
         </div>
