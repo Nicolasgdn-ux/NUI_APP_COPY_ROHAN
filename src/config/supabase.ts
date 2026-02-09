@@ -66,8 +66,12 @@ export interface MenuItem {
   id: string;
   restaurant_id: string;
   name: string;
+  name_thai?: string;
   description?: string;
-  base_price: number;
+  price_standard: number;
+  price_seafood?: number; // Nouveau
+  price_chicken_pork?: number; // Nouveau
+  page_number?: number; // Nouveau
   category?: string;
   image_url?: string;
   is_available: boolean;
@@ -115,7 +119,10 @@ export interface OrderItem {
   menu_item_id: string;
   name: string;
   quantity: number;
-  base_price: number;
+  // On remplace base_price par le prix spécifique sélectionné pour cette ligne
+  selected_price: number; 
+  // On garde une trace du type de variante choisie (Standard, Seafood, etc.)
+  price_type: "standard" | "seafood" | "chicken_pork"; 
   selected_size?: { name: string; price: number };
   selected_addons?: { name: string; price: number }[];
   item_total: number;
