@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   ShoppingCart,
   Plus,
@@ -34,6 +34,11 @@ interface CartItem extends MenuItem {
 
 const CustomerMenu: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const tableParam = searchParams.get("table");
+  const tableId = tableParam || "Takeaway";
+  const isTableOrder = tableId !== "Takeaway";
+
   const [restaurant, setRestaurant] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -64,7 +69,10 @@ const CustomerMenu: React.FC = () => {
   }, [restaurant]);
 
   const loadRestaurant = async () => {
-    if (!slug) return;
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from("restaurants")
@@ -101,7 +109,7 @@ const CustomerMenu: React.FC = () => {
     selectedSize?: any,
     selectedAddons: any[] = []
   ) => {
-    const basePrice = selectedSize ? selectedSize.price : item.base_price;
+    const basePrice = selectedSize ? selectedSize.price : item.price_standard;
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
@@ -244,11 +252,10 @@ const CustomerMenu: React.FC = () => {
               <button
                 key={category}
                 onClick={() => setCategoryFilter(category || "all")}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${
-                  categoryFilter === category
-                    ? "bg-accent text-white"
-                    : "bg-gray-100 text-gray-600"
-                }`}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${categoryFilter === category
+                  ? "bg-accent text-white"
+                  : "bg-gray-100 text-gray-600"
+                  }`}
               >
                 {category === "all" ? "All" : category}
               </button>
@@ -307,9 +314,9 @@ const CustomerMenu: React.FC = () => {
                         <p className="font-bold text-gray-800">
                           {item.sizes && item.sizes.length > 0
                             ? formatCurrency(
-                                Math.min(...item.sizes.map((s) => s.price))
-                              )
-                            : formatCurrency(item.base_price)}
+                              Math.min(...item.sizes.map((s) => s.price))
+                            )
+                            : formatCurrency(item.price_standard)}
                         </p>
                       </div>
 
@@ -386,6 +393,8 @@ const CustomerMenu: React.FC = () => {
         isOpen={showCheckout}
         cart={cart}
         restaurantId={restaurant.id}
+        tableId={tableId}
+        isTableOrder={isTableOrder}
         onClose={() => setShowCheckout(false)}
         onSuccess={() => {
           setCart([]);
@@ -557,7 +566,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   };
 
   const calculateTotal = () => {
-    const basePrice = selectedSize ? selectedSize.price : item.base_price;
+    const basePrice = selectedSize ? selectedSize.price : item.price_standard;
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
@@ -589,11 +598,10 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                 <button
                   key={size.name}
                   onClick={() => setSelectedSize(size)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
-                    selectedSize?.name === size.name
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-accent/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedSize?.name === size.name
+                    ? "border-accent bg-accent/5"
+                    : "border-border hover:border-accent/50"
+                    }`}
                 >
                   <span className="font-medium text-text">{size.name}</span>
                   <span className="text-accent font-semibold">
@@ -614,11 +622,10 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                 <button
                   key={addon.name}
                   onClick={() => toggleAddon(addon)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${
-                    selectedAddons.find((a) => a.name === addon.name)
-                      ? "border-accent bg-accent/5"
-                      : "border-border hover:border-accent/50"
-                  }`}
+                  className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedAddons.find((a) => a.name === addon.name)
+                    ? "border-accent bg-accent/5"
+                    : "border-border hover:border-accent/50"
+                    }`}
                 >
                   <span className="font-medium text-text">{addon.name}</span>
                   <span className="text-accent font-semibold">
@@ -653,6 +660,8 @@ interface CheckoutModalProps {
   isOpen: boolean;
   cart: CartItem[];
   restaurantId: string;
+  tableId: string;
+  isTableOrder: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -661,13 +670,13 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   cart,
   restaurantId,
+  tableId,
+  isTableOrder,
   onClose,
   onSuccess,
 }) => {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [orderType, setOrderType] = useState<"table" | "takeaway">("table");
-  const [tableNumber, setTableNumber] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -694,26 +703,22 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    if (orderType === "table" && !tableNumber.trim()) {
-      setError("Please enter table number");
-      return;
-    }
-
     setLoading(true);
 
     const orderData = {
       restaurant_id: restaurantId,
-      order_type: (orderType === "table" ? "qr" : "counter") as
+      order_type: (isTableOrder ? "qr" : "counter") as
         | "qr"
         | "counter",
-      table_number: orderType === "table" ? tableNumber : undefined,
+      table_number: isTableOrder ? tableId : undefined,
       customer_name: customerName,
       customer_phone: customerPhone,
       items: cart.map((item) => ({
         menu_item_id: item.id,
         name: item.name,
         quantity: item.quantity,
-        base_price: item.base_price,
+        selected_price: item.selectedSize ? item.selectedSize.price : item.price_standard,
+        price_type: "standard" as const,
         selected_size: item.selectedSize,
         selected_addons: item.selectedAddons,
         item_total: item.itemTotal,
@@ -742,9 +747,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const resetForm = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setTableNumber("");
     setNotes("");
-    setOrderType("table");
     setSuccess(false);
   };
 
@@ -769,49 +772,22 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Checkout" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={isTableOrder ? `Checkout - Table ${tableId}` : "Checkout - Takeaway"}
+      size="lg"
+    >
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && <Alert type="error" message={error} />}
 
-        {/* Order Type */}
-        <div>
-          <label className="label mb-3">Order Type</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setOrderType("table")}
-              className={`p-4 rounded-lg border-2 font-semibold transition-colors ${
-                orderType === "table"
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border hover:border-accent/50"
-              }`}
-            >
-              Dine In (Table)
-            </button>
-            <button
-              type="button"
-              onClick={() => setOrderType("takeaway")}
-              className={`p-4 rounded-lg border-2 font-semibold transition-colors ${
-                orderType === "takeaway"
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border hover:border-accent/50"
-              }`}
-            >
-              Takeaway / Parcel
-            </button>
-          </div>
+        {/* Order Type Info */}
+        <div className="bg-accent/10 border border-accent rounded-lg p-4">
+          <p className="text-sm text-text-secondary">Order Type</p>
+          <p className="text-lg font-semibold text-accent">
+            {isTableOrder ? `Dine In - Table ${tableId}` : "Takeaway / Parcel"}
+          </p>
         </div>
-
-        {/* Table Number (only for table orders) */}
-        {orderType === "table" && (
-          <Input
-            label="Table Number"
-            value={tableNumber}
-            onChange={(e) => setTableNumber(e.target.value)}
-            placeholder="Enter your table number"
-            required
-          />
-        )}
 
         {/* Customer Details */}
         <Input
