@@ -86,6 +86,7 @@ export interface Order {
   order_number: string;
   order_type: "qr" | "counter" | "phone" | "table";
   table_number?: string;
+  session_id?: string;
   customer_name?: string;
   customer_phone?: string;
   items: OrderItem[];
@@ -94,13 +95,13 @@ export interface Order {
   discount?: number;
   total: number;
   status:
-    | "pending"
-    | "accepted"
-    | "preparing"
-    | "ready"
-    | "completed"
-    | "cancelled"
-    | "rejected";
+  | "pending"
+  | "accepted"
+  | "preparing"
+  | "ready"
+  | "completed"
+  | "cancelled"
+  | "rejected";
   payment_method?: string;
   payment_status?: string;
   payment_transaction_id?: string;
@@ -120,9 +121,9 @@ export interface OrderItem {
   name: string;
   quantity: number;
   // On remplace base_price par le prix spécifique sélectionné pour cette ligne
-  selected_price: number; 
+  selected_price: number;
   // On garde une trace du type de variante choisie (Standard, Seafood, etc.)
-  price_type: "standard" | "seafood" | "chicken_pork"; 
+  price_type: "standard" | "seafood" | "chicken_pork";
   selected_size?: { name: string; price: number };
   selected_addons?: { name: string; price: number }[];
   item_total: number;

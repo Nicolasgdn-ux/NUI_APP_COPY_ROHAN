@@ -12,7 +12,6 @@ import {
 import {
   Card,
   Button,
-  Input,
   Modal,
   Loading,
   Alert,
@@ -22,7 +21,7 @@ import {
   createOrder,
 } from "../../services/restaurantService";
 import type { MenuItem } from "../../config/supabase";
-import { formatCurrency, isValidPhone } from "../../utils/helpers";
+import { formatCurrency } from "../../utils/helpers";
 import { supabase } from "../../config/supabase";
 
 interface CartItem extends MenuItem {
@@ -38,6 +37,11 @@ const CustomerMenu: React.FC = () => {
   const tableParam = searchParams.get("table");
   const tableId = tableParam || "Takeaway";
   const isTableOrder = tableId !== "Takeaway";
+
+  // Générer un ID de session unique pour chaque client
+  const [sessionId] = useState<string>(() =>
+    `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  );
 
   const [restaurant, setRestaurant] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -395,6 +399,7 @@ const CustomerMenu: React.FC = () => {
         restaurantId={restaurant.id}
         tableId={tableId}
         isTableOrder={isTableOrder}
+        sessionId={sessionId}
         onClose={() => setShowCheckout(false)}
         onSuccess={() => {
           setCart([]);
@@ -662,6 +667,7 @@ interface CheckoutModalProps {
   restaurantId: string;
   tableId: string;
   isTableOrder: boolean;
+  sessionId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -672,11 +678,10 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   restaurantId,
   tableId,
   isTableOrder,
+  sessionId,
   onClose,
   onSuccess,
 }) => {
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -693,16 +698,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
     e.preventDefault();
     setError("");
 
-    if (!customerName.trim()) {
-      setError("Please enter your name");
-      return;
-    }
-
-    if (!isValidPhone(customerPhone)) {
-      setError("Please enter a valid 10-digit phone number");
-      return;
-    }
-
     setLoading(true);
 
     const orderData = {
@@ -711,8 +706,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         | "qr"
         | "counter",
       table_number: isTableOrder ? tableId : undefined,
-      customer_name: customerName,
-      customer_phone: customerPhone,
+      session_id: sessionId,
       items: cart.map((item) => ({
         menu_item_id: item.id,
         name: item.name,
@@ -745,8 +739,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const resetForm = () => {
-    setCustomerName("");
-    setCustomerPhone("");
     setNotes("");
     setSuccess(false);
   };
@@ -788,25 +780,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
             {isTableOrder ? `Dine In - Table ${tableId}` : "Takeaway / Parcel"}
           </p>
         </div>
-
-        {/* Customer Details */}
-        <Input
-          label="Your Name"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="Enter your name"
-          required
-        />
-
-        <Input
-          label="Phone Number"
-          type="tel"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
-          placeholder="10-digit mobile number"
-          required
-          helperText="We'll use this to contact you about your order"
-        />
 
         {/* Special Instructions */}
         <div>
