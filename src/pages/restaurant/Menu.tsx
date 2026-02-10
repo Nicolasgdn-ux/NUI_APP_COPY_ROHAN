@@ -30,6 +30,14 @@ const Menu: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Helper to extract name from JSONB structure
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object' && item.name !== null) {
+      return item.name.en || item.name.th || Object.values(item.name)[0] as string || 'Item';
+    }
+    return String(item.name || 'Item');
+  };
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (!user.restaurant_id) return;
@@ -50,8 +58,9 @@ const Menu: React.FC = () => {
   ];
 
   const filteredItems = menuItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.name_thai && item.name_thai.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = getItemName(item)
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
@@ -112,14 +121,14 @@ const Menu: React.FC = () => {
           <Card key={item.id} className={!item.is_available ? "opacity-60" : ""}>
             <div className="flex flex-col lg:flex-row gap-4">
               {item.image_url && (
-                <img src={item.image_url} alt={item.name} className="w-full lg:w-32 h-32 object-cover rounded-lg" />
+                <img src={item.image_url} alt={getItemName(item)} className="w-full lg:w-32 h-32 object-cover rounded-lg" />
               )}
 
               <div className="flex-1 space-y-2">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-text">
-                      {item.name} <span className="text-accent ml-2">{item.name_thai}</span>
+                      {getItemName(item)}
                     </h3>
                     <div className="flex gap-2 mt-1">
                       <Badge variant="neutral">Page {item.page_number || '?'}</Badge>
@@ -195,10 +204,13 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, item, onClose, mo
 
   useEffect(() => {
     if (mode === "edit" && item) {
+      const itemName = typeof item.name === 'object' ? (item.name.en || '') : (item.name || '');
+      const itemNameTh = typeof item.name === 'object' ? (item.name.th || '') : '';
+      const itemDesc = typeof item.description === 'object' ? (item.description.en || '') : (item.description || '');
       setFormData({
-        name: item.name,
-        name_thai: item.name_thai || "",
-        description: item.description || "",
+        name: itemName,
+        name_thai: itemNameTh,
+        description: itemDesc,
         category: item.category || "",
         price_standard: item.price_standard?.toString() || "",
         price_seafood: item.price_seafood?.toString() || "",
@@ -221,13 +233,20 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, item, onClose, mo
     setLoading(true);
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-    // Correction de l'erreur "null vs undefined" (Ligne 211)
-    // On utilise "|| undefined" pour que TypeScript soit content
+    // Build JSONB structure for name and description
     const data: Partial<MenuItem> = {
       restaurant_id: user.restaurant_id,
-      name: formData.name,
-      name_thai: formData.name_thai || undefined,
-      description: formData.description || undefined,
+      name: {
+        en: formData.name,
+        th: formData.name_thai || '',
+        ru: '',
+        zh: ''
+      } as any,
+      description: {
+        en: formData.description || '',
+        ru: '',
+        zh: ''
+      } as any,
       category: formData.category || undefined,
       price_standard: parseFloat(formData.price_standard),
       price_seafood: formData.price_seafood ? parseFloat(formData.price_seafood) : undefined,
@@ -282,6 +301,14 @@ interface DeleteModalProps {
 
 const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, item, onClose }) => {
   const [loading, setLoading] = useState(false);
+
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object' && item.name !== null) {
+      return item.name.en || item.name.th || Object.values(item.name)[0] as string || 'Item';
+    }
+    return String(item.name || 'Item');
+  };
+
   const handleDelete = async () => {
     if (!item) return;
     setLoading(true);
@@ -293,7 +320,7 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, item, onClose }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Delete Item" size="md">
       <div className="space-y-4">
-        <p>Are you sure you want to delete <strong>{item?.name}</strong>?</p>
+        <p>Are you sure you want to delete <strong>{item ? getItemName(item) : ''}</strong>?</p>
         <div className="flex gap-3">
           <Button variant="outline" onClick={onClose} fullWidth>Cancel</Button>
           <Button variant="danger" onClick={handleDelete} loading={loading} fullWidth>Delete</Button>
