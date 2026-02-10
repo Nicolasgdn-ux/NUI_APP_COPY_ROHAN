@@ -65,14 +65,29 @@ export interface User {
 export interface MenuItem {
   id: string;
   restaurant_id: string;
-  name: string;
-  name_thai?: string;
-  description?: string;
-  price_standard: number;
-  price_seafood?: number; // Nouveau
-  price_chicken_pork?: number; // Nouveau
-  page_number?: number; // Nouveau
+
+  // Multilingue - structure JSONB en BD
+  name: {
+    en: string;
+    th: string;
+    ru?: string;
+    zh?: string;
+  };
+  description?: {
+    en?: string;
+    th?: string;
+    ru?: string;
+    zh?: string;
+  };
+
+  // Prices (tous optionnels - au moins un prix est requis)
+  price_standard?: number;
+  price_seafood?: number;
+  price_chicken_pork?: number;
+
+  // Meta
   category?: string;
+  page_number?: number;
   image_url?: string;
   is_available: boolean;
   sizes?: { name: string; price: number }[];

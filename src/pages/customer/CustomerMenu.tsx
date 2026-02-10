@@ -38,10 +38,25 @@ const CustomerMenu: React.FC = () => {
   const tableId = tableParam || "Takeaway";
   const isTableOrder = tableId !== "Takeaway";
 
-  // Générer un ID de session unique pour chaque client
-  const [sessionId] = useState<string>(() =>
-    `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-  );
+  // SessionID persistant - même personne = même sessionID
+  const [sessionId] = useState<string>(() => {
+    const key = `session_table_${tableId}`;
+    const existing = sessionStorage.getItem(key);
+    if (existing) return existing;
+
+    const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem(key, newId);
+    return newId;
+  });
+
+  // Language selection
+  const [language, setLanguage] = useState<'en' | 'th' | 'ru' | 'zh'>(() => {
+    return (localStorage.getItem('userLanguage') || 'en') as any;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('userLanguage', language);
+  }, [language]);
 
   const [restaurant, setRestaurant] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -213,27 +228,56 @@ const CustomerMenu: React.FC = () => {
     }
   };
 
+  // Get item name/description in selected language
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object') {
+      return item.name[language] || item.name.en || 'Item';
+    }
+    return item.name || 'Item';
+  };
+
+  const getItemDescription = (item: MenuItem): string | undefined => {
+    if (!item.description) return undefined;
+    if (typeof item.description === 'object') {
+      return item.description[language] || item.description.en;
+    }
+    return item.description;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-screen-lg mx-auto px-4 py-3">
-          <div className="flex items-center gap-3 mb-3">
-            {restaurant.logo_url && (
-              <img
-                src={restaurant.logo_url}
-                alt={restaurant.name}
-                className="w-12 h-12 rounded-lg object-cover"
-              />
-            )}
-            <div>
-              <h1 className="font-bold text-lg text-gray-800">
-                {restaurant.name}
-              </h1>
-              <p className="text-xs text-gray-500">
-                {restaurant.restaurant_type}
-              </p>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-3 flex-1">
+              {restaurant.logo_url && (
+                <img
+                  src={restaurant.logo_url}
+                  alt={restaurant.name}
+                  className="w-12 h-12 rounded-lg object-cover"
+                />
+              )}
+              <div>
+                <h1 className="font-bold text-lg text-gray-800">
+                  {restaurant.name}
+                </h1>
+                <p className="text-xs text-gray-500">
+                  {restaurant.restaurant_type}
+                </p>
+              </div>
             </div>
+            {/* Language Selector */}
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as any)}
+              className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent/20"
+            >
+              <option value="en">🇬🇧 EN</option>
+              <option value="th">🇹🇭 TH</option>
+              <option value="ru">🇷🇺 RU</option>
+              <option value="zh">🇨🇳 ZH</option>
+            </select>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -291,7 +335,7 @@ const CustomerMenu: React.FC = () => {
                     {item.image_url ? (
                       <img
                         src={item.image_url}
-                        alt={item.name}
+                        alt={getItemName(item)}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -310,7 +354,7 @@ const CustomerMenu: React.FC = () => {
 
                   <div className="p-3">
                     <h3 className="font-semibold text-sm text-gray-800 mb-1 line-clamp-2 h-10">
-                      {item.name}
+                      {getItemName(item)}
                     </h3>
 
                     <div className="flex items-end justify-between mt-2">
@@ -382,6 +426,7 @@ const CustomerMenu: React.FC = () => {
           setShowCart(false);
           setShowCheckout(true);
         }}
+        language={language}
       />
 
       {/* Item Customization Modal */}
@@ -390,6 +435,7 @@ const CustomerMenu: React.FC = () => {
         item={selectedItem}
         onClose={() => setShowItemModal(false)}
         onAdd={addToCart}
+        language={language}
       />
 
       {/* Checkout Modal */}
@@ -446,6 +492,7 @@ interface CartModalProps {
   onUpdateQuantity: (index: number, delta: number) => void;
   onRemove: (index: number) => void;
   onCheckout: () => void;
+  language: 'en' | 'th' | 'ru' | 'zh';
 }
 
 const CartModal: React.FC<CartModalProps> = ({
@@ -455,11 +502,19 @@ const CartModal: React.FC<CartModalProps> = ({
   onUpdateQuantity,
   onRemove,
   onCheckout,
+  language,
 }) => {
   const total = cart.reduce(
     (sum, item) => sum + item.itemTotal * item.quantity,
     0
   );
+
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object') {
+      return item.name[language] || item.name.en || 'Item';
+    }
+    return item.name || 'Item';
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Your Cart" size="lg">
@@ -478,7 +533,7 @@ const CartModal: React.FC<CartModalProps> = ({
                   className="flex items-start space-x-4 p-4 bg-bg-subtle rounded-lg"
                 >
                   <div className="flex-1">
-                    <h4 className="font-semibold text-text">{item.name}</h4>
+                    <h4 className="font-semibold text-text">{getItemName(item)}</h4>
                     {item.selectedSize && (
                       <p className="text-sm text-text-secondary">
                         Size: {item.selectedSize.name}
@@ -543,6 +598,7 @@ interface ItemCustomizationModalProps {
   item: MenuItem | null;
   onClose: () => void;
   onAdd: (item: MenuItem, selectedSize?: any, selectedAddons?: any[]) => void;
+  language: 'en' | 'th' | 'ru' | 'zh';
 }
 
 const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
@@ -550,6 +606,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   item,
   onClose,
   onAdd,
+  language,
 }) => {
   const [selectedSize, setSelectedSize] = useState<any>(null);
   const [selectedAddons, setSelectedAddons] = useState<any[]>([]);
@@ -561,6 +618,22 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   }, [item]);
 
   if (!item) return null;
+
+  // Get item name/description in selected language
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object') {
+      return item.name[language] || item.name.en || 'Item';
+    }
+    return item.name || 'Item';
+  };
+
+  const getItemDescription = (item: MenuItem): string | undefined => {
+    if (!item.description) return undefined;
+    if (typeof item.description === 'object') {
+      return item.description[language] || item.description.en;
+    }
+    return item.description;
+  };
 
   const toggleAddon = (addon: any) => {
     if (selectedAddons.find((a) => a.name === addon.name)) {
@@ -580,18 +653,18 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={item.name} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={getItemName(item)} size="md">
       <div className="space-y-6">
         {item.image_url && (
           <img
             src={item.image_url}
-            alt={item.name}
+            alt={getItemName(item)}
             className="w-full h-48 object-cover rounded-lg"
           />
         )}
 
-        {item.description && (
-          <p className="text-text-secondary">{item.description}</p>
+        {getItemDescription(item) && (
+          <p className="text-text-secondary">{getItemDescription(item)}</p>
         )}
 
         {/* Sizes */}
