@@ -68,6 +68,16 @@ export const updateOrderStatus = async (
   return !error;
 };
 
+// Normalize MenuItem data from Supabase (prices may be strings, ensure they're numbers)
+const normalizeMenuItems = (items: any[]): MenuItem[] => {
+  return items.map(item => ({
+    ...item,
+    price_standard: item.price_standard ? parseFloat(item.price_standard) : undefined,
+    price_seafood: item.price_seafood ? parseFloat(item.price_seafood) : undefined,
+    price_chicken_pork: item.price_chicken_pork ? parseFloat(item.price_chicken_pork) : undefined,
+  }));
+};
+
 // Subscribe to menu items with real-time updates
 export const subscribeToMenuItems = (
   restaurantId: string,
@@ -83,7 +93,7 @@ export const subscribeToMenuItems = (
       .order("id", { ascending: false });
 
     if (!error && data) {
-      callback(data);
+      callback(normalizeMenuItems(data));
     }
   };
 

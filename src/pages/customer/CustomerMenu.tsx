@@ -128,12 +128,12 @@ const CustomerMenu: React.FC = () => {
     selectedSize?: any,
     selectedAddons: any[] = []
   ) => {
-    const basePrice = selectedSize ? selectedSize.price : item.price_standard;
+    const basePrice = selectedSize ? selectedSize.price : (typeof item.price_standard === 'string' ? parseFloat(item.price_standard) : item.price_standard) || 0;
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
     );
-    const itemTotal = basePrice + addonsTotal;
+    const itemTotal = (basePrice || 0) + addonsTotal;
 
     const cartItem: CartItem = {
       ...item,
@@ -644,12 +644,12 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   };
 
   const calculateTotal = () => {
-    const basePrice = selectedSize ? selectedSize.price : item.price_standard;
+    const basePrice = selectedSize ? selectedSize.price : (typeof item.price_standard === 'string' ? parseFloat(item.price_standard) : item.price_standard) || 0;
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
     );
-    return basePrice + addonsTotal;
+    return (basePrice || 0) + addonsTotal;
   };
 
   return (
