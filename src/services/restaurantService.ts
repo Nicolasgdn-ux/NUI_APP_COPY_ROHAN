@@ -78,7 +78,9 @@ export const subscribeToMenuItems = (
       .from("menu_items")
       .select("*")
       .eq("restaurant_id", restaurantId)
-      .order("created_at", { ascending: false });
+      // some projects don't have a `created_at` column on menu_items
+      // ordering by `id` (UUID) is a safe default to provide stable ordering
+      .order("id", { ascending: false });
 
     if (!error && data) {
       callback(data);
