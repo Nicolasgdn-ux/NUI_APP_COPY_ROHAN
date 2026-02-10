@@ -3,11 +3,19 @@ import { APP_CONFIG } from "../config/config";
 /**
  * Format currency value
  */
-export const formatCurrency = (amount: number | undefined | null): string => {
-  if (amount === undefined || amount === null || isNaN(amount)) {
+export const formatCurrency = (amount: number | string | undefined | null): string => {
+  if (amount === undefined || amount === null) {
     return `${APP_CONFIG.defaultCurrency}0.00`;
   }
-  return `${APP_CONFIG.defaultCurrency}${amount.toFixed(2)}`;
+
+  // Convert string to number if needed
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+  if (isNaN(numAmount)) {
+    return `${APP_CONFIG.defaultCurrency}0.00`;
+  }
+
+  return `${APP_CONFIG.defaultCurrency}${numAmount.toFixed(2)}`;
 };
 
 /**
