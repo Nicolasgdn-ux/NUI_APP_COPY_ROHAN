@@ -115,7 +115,7 @@ const CustomerMenu: React.FC = () => {
   ];
 
   const filteredItems = menuItems.filter((item) => {
-    const matchesSearch = item.name
+    const matchesSearch = getItemName(item)
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchesCategory =
@@ -782,7 +782,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
       session_id: sessionId,
       items: cart.map((item) => ({
         menu_item_id: item.id,
-        name: item.name,
+        name: getItemName(item),
         quantity: item.quantity,
         selected_price: item.selectedSize ? item.selectedSize.price : item.price_standard,
         price_type: "standard" as const,
@@ -872,7 +872,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
           {cart.map((item, index) => (
             <div key={index} className="flex justify-between text-sm">
               <span className="text-text-secondary">
-                {item.quantity}x {item.name}
+                {item.quantity}x {getItemName(item)}
                 {item.selectedSize && ` (${item.selectedSize.name})`}
               </span>
               <span className="text-text">
