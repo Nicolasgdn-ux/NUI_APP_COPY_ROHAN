@@ -26,7 +26,10 @@ import { supabase } from "../../config/supabase";
 
 interface CartItem extends MenuItem {
   quantity: number;
-  selectedSize?: { name: string; price: number };
+  selectedProtein?: 'shrimp' | 'squid' | 'seafood' | 'chicken' | 'pork';
+  selectedPrice: number;
+  spicyLevel?: 'none' | 'little' | 'medium' | 'very';
+  biggerPortion?: boolean;
   selectedAddons: { name: string; price: number }[];
   itemTotal: number;
 }
@@ -117,6 +120,29 @@ const CustomerMenu: React.FC = () => {
     return item.name || 'Item';
   };
 
+  // Translate category names
+  const getCategoryName = (category: string): string => {
+    const translations: Record<string, Record<string, string>> = {
+      'Noodles': { en: 'Noodles', th: 'เส้น', ru: 'Лапша', zh: '面条' },
+      'Rice': { en: 'Rice', th: 'ข้าว', ru: 'Рис', zh: '米饭' },
+      'Curry': { en: 'Curry', th: 'แกง', ru: 'Карри', zh: '咖喱' },
+      'Stir-fry': { en: 'Stir-fry', th: 'ผัด', ru: 'Жареное', zh: '炒菜' },
+      'Appetizer': { en: 'Appetizer', th: 'ของทอด', ru: 'Закуски', zh: '小吃' },
+      'Salad': { en: 'Salad', th: 'ยำ', ru: 'Салаты', zh: '沙拉' },
+      'Vegetable': { en: 'Vegetable', th: 'ผัก', ru: 'Овощи', zh: '蔬菜' },
+      'Soup': { en: 'Soup', th: 'ซุป', ru: 'Супы', zh: '汤' },
+      'Dessert': { en: 'Dessert', th: 'ของหวาน', ru: 'Десерты', zh: '甜品' },
+      'Beverage': { en: 'Beverage', th: 'เครื่องดื่ม', ru: 'Напитки', zh: '饮料' },
+      'Add-ons': { en: 'Add-ons', th: 'เพิ่มเติม', ru: 'Добавки', zh: '附加' },
+    };
+
+    if (category === 'all') {
+      return language === 'th' ? 'ทั้งหมด' : language === 'ru' ? 'Все' : language === 'zh' ? '全部' : 'All';
+    }
+
+    return translations[category]?.[language] || category;
+  };
+
   // Get first available price (standard > seafood > chicken_pork)
   const getDisplayPrice = (item: MenuItem): number | null => {
     if (item.price_standard && item.price_standard > 0) {
@@ -131,10 +157,30 @@ const CustomerMenu: React.FC = () => {
     return null;
   };
 
-  const categories = [
-    "all",
-    ...new Set(menuItems.map((item) => item.category).filter(Boolean)),
-  ];
+  // Sort categories by first appearance in menu (by id_menu from CSV)
+  const sortedCategories = () => {
+    const categoriesInOrder: string[] = [];
+    const seenCategories = new Set<string>();
+
+    // Sort items by id_menu first
+    const sortedItems = [...menuItems].sort((a, b) => {
+      const aIdMenu = (a as any).id_menu || 0;
+      const bIdMenu = (b as any).id_menu || 0;
+      return aIdMenu - bIdMenu;
+    });
+
+    // Collect categories in order of first appearance
+    sortedItems.forEach(item => {
+      if (item.category && !seenCategories.has(item.category)) {
+        categoriesInOrder.push(item.category);
+        seenCategories.add(item.category);
+      }
+    });
+
+    return ['all', ...categoriesInOrder];
+  };
+
+  const categories = sortedCategories();
 
   const filteredItems = menuItems.filter((item) => {
     const matchesSearch = getItemName(item)
@@ -147,20 +193,27 @@ const CustomerMenu: React.FC = () => {
 
   const addToCart = (
     item: MenuItem,
-    selectedSize?: any,
+    selectedProtein?: string,
+    selectedPrice?: number,
+    spicyLevel?: string,
+    biggerPortion?: boolean,
     selectedAddons: any[] = []
   ) => {
-    const basePrice = selectedSize ? selectedSize.price : (getDisplayPrice(item) || 0);
+    const basePrice = selectedPrice || getDisplayPrice(item) || 0;
+    const portionExtra = biggerPortion ? 20 : 0;
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
     );
-    const itemTotal = (basePrice || 0) + addonsTotal;
+    const itemTotal = basePrice + portionExtra + addonsTotal;
 
     const cartItem: CartItem = {
       ...item,
       quantity: 1,
-      selectedSize,
+      selectedProtein: selectedProtein as any,
+      selectedPrice: basePrice,
+      spicyLevel: spicyLevel as any,
+      biggerPortion,
       selectedAddons,
       itemTotal,
     };
@@ -168,7 +221,9 @@ const CustomerMenu: React.FC = () => {
     const existingIndex = cart.findIndex(
       (ci) =>
         ci.id === item.id &&
-        ci.selectedSize?.name === selectedSize?.name &&
+        ci.selectedProtein === selectedProtein &&
+        ci.spicyLevel === spicyLevel &&
+        ci.biggerPortion === biggerPortion &&
         JSON.stringify(ci.selectedAddons) === JSON.stringify(selectedAddons)
     );
 
@@ -201,11 +256,16 @@ const CustomerMenu: React.FC = () => {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleItemClick = (item: MenuItem) => {
-    if (item.sizes && item.sizes.length > 0) {
+    // Always show modal for items with multiple price options or to choose spicy level
+    const hasMultiplePrices = (item.price_seafood && item.price_seafood > 0) || (item.price_chicken_pork && item.price_chicken_pork > 0);
+
+    if (hasMultiplePrices || item.sizes && item.sizes.length > 0) {
       setSelectedItem(item);
       setShowItemModal(true);
     } else {
-      addToCart(item);
+      // Only items with single standard price can be added directly
+      setSelectedItem(item);
+      setShowItemModal(true); // Always show modal to let user choose spicy level and portion
     }
   };
 
@@ -237,10 +297,6 @@ const CustomerMenu: React.FC = () => {
       }
       return sum;
     }, 0);
-  };
-
-  const handleAddSimple = (item: MenuItem) => {
-    addToCart(item);
   };
 
   const handleRemoveItem = (itemId: string) => {
@@ -311,7 +367,7 @@ const CustomerMenu: React.FC = () => {
                   : "bg-gray-100 text-gray-600"
                   }`}
               >
-                {category === "all" ? "All" : category}
+                {getCategoryName(category)}
               </button>
             ))}
           </div>
@@ -328,9 +384,6 @@ const CustomerMenu: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             {filteredItems.map((item) => {
               const quantity = getItemQuantity(item.id);
-              const hasVariations =
-                (item.sizes && item.sizes.length > 0) ||
-                (item.addons && item.addons.length > 0);
 
               return (
                 <div
@@ -386,11 +439,7 @@ const CustomerMenu: React.FC = () => {
                         <div className="flex-shrink-0">
                           {quantity === 0 ? (
                             <button
-                              onClick={() =>
-                                hasVariations
-                                  ? handleItemClick(item)
-                                  : handleAddSimple(item)
-                              }
+                              onClick={() => handleItemClick(item)}
                               className="px-5 py-1.5 border-2 border-accent text-accent font-bold text-xs rounded-md hover:shadow-md transition-shadow"
                             >
                               ADD
@@ -407,11 +456,7 @@ const CustomerMenu: React.FC = () => {
                                 {quantity}
                               </span>
                               <button
-                                onClick={() =>
-                                  hasVariations
-                                    ? handleItemClick(item)
-                                    : handleAddSimple(item)
-                                }
+                                onClick={() => handleItemClick(item)}
                                 className="px-2 py-1 hover:bg-accent-hover rounded-r-md"
                               >
                                 <Plus className="w-3.5 h-3.5" />
@@ -548,10 +593,24 @@ const CartModal: React.FC<CartModalProps> = ({
                 >
                   <div className="flex-1">
                     <h4 className="font-semibold text-text">{getItemName(item)}</h4>
-                    {item.selectedSize && (
+                    {item.selectedProtein && (
                       <p className="text-sm text-text-secondary">
-                        Size: {item.selectedSize.name}
+                        {item.selectedProtein === 'shrimp' ? '🍤 Shrimp' :
+                          item.selectedProtein === 'squid' ? '🦑 Squid' :
+                            item.selectedProtein === 'seafood' ? '🍤🦑 Seafood' :
+                              item.selectedProtein === 'chicken' ? '🐔 Chicken' :
+                                item.selectedProtein === 'pork' ? '🐷 Pork' : ''}
                       </p>
+                    )}
+                    {item.spicyLevel && item.spicyLevel !== 'none' && (
+                      <p className="text-sm text-text-secondary">
+                        {item.spicyLevel === 'little' ? '🌶️ Little Spicy' :
+                          item.spicyLevel === 'medium' ? '🌶️🌶️ Medium Spicy' :
+                            item.spicyLevel === 'very' ? '🌶️🌶️🌶️ Very Spicy' : ''}
+                      </p>
+                    )}
+                    {item.biggerPortion && (
+                      <p className="text-sm text-text-secondary">🍽️ Bigger Portion (+฿20)</p>
                     )}
                     {item.selectedAddons.length > 0 && (
                       <p className="text-sm text-text-secondary">
@@ -611,7 +670,7 @@ interface ItemCustomizationModalProps {
   isOpen: boolean;
   item: MenuItem | null;
   onClose: () => void;
-  onAdd: (item: MenuItem, selectedSize?: any, selectedAddons?: any[]) => void;
+  onAdd: (item: MenuItem, selectedProtein?: string, selectedPrice?: number, spicyLevel?: string, biggerPortion?: boolean, selectedAddons?: any[]) => void;
   language: 'en' | 'th' | 'ru' | 'zh';
 }
 
@@ -622,12 +681,21 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   onAdd,
   language,
 }) => {
-  const [selectedSize, setSelectedSize] = useState<any>(null);
+  const [selectedProtein, setSelectedProtein] = useState<'shrimp' | 'squid' | 'seafood' | 'chicken' | 'pork' | null>(null);
+  const [spicyLevel, setSpicyLevel] = useState<'none' | 'little' | 'medium' | 'very'>('none');
+  const [biggerPortion, setBiggerPortion] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<any[]>([]);
 
   useEffect(() => {
-    if (item?.sizes && item.sizes.length > 0) {
-      setSelectedSize(item.sizes[0]);
+    if (item) {
+      // Auto-select protein based on available prices
+      if (item.price_seafood && item.price_seafood > 0 && !item.price_chicken_pork) {
+        setSelectedProtein('seafood');
+      } else if (item.price_chicken_pork && item.price_chicken_pork > 0 && !item.price_seafood) {
+        setSelectedProtein('chicken');
+      } else if (item.price_standard && item.price_standard > 0) {
+        setSelectedProtein(null); // No protein selection needed
+      }
     }
   }, [item]);
 
@@ -638,20 +706,6 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
       return menuItem.name[language] || menuItem.name.en || 'Item';
     }
     return menuItem.name || 'Item';
-  };
-
-  // Get first available price (standard > seafood > chicken_pork)
-  const getItemDisplayPrice = (menuItem: MenuItem): number => {
-    if (menuItem.price_standard && menuItem.price_standard > 0) {
-      return menuItem.price_standard;
-    }
-    if (menuItem.price_seafood && menuItem.price_seafood > 0) {
-      return menuItem.price_seafood;
-    }
-    if (menuItem.price_chicken_pork && menuItem.price_chicken_pork > 0) {
-      return menuItem.price_chicken_pork;
-    }
-    return 0;
   };
 
   const getItemDescription = (item: MenuItem): string | undefined => {
@@ -670,14 +724,39 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
     }
   };
 
+  const getSelectedPrice = (): number => {
+    // If has standard price, use it
+    if (item.price_standard && item.price_standard > 0) {
+      return item.price_standard;
+    }
+
+    // If protein selected
+    if (selectedProtein) {
+      if (['shrimp', 'squid', 'seafood'].includes(selectedProtein)) {
+        return item.price_seafood || 0;
+      } else if (['chicken', 'pork'].includes(selectedProtein)) {
+        return item.price_chicken_pork || 0;
+      }
+    }
+
+    // Default to first available
+    return item.price_seafood || item.price_chicken_pork || 0;
+  };
+
   const calculateTotal = () => {
-    const basePrice = selectedSize ? selectedSize.price : getItemDisplayPrice(item);
+    const basePrice = getSelectedPrice();
+    const portionExtra = biggerPortion ? 20 : 0;
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
     );
-    return (basePrice || 0) + addonsTotal;
+    return (basePrice || 0) + portionExtra + addonsTotal;
   };
+
+  const hasSeafoodPrice = item.price_seafood && item.price_seafood > 0;
+  const hasChickenPorkPrice = item.price_chicken_pork && item.price_chicken_pork > 0;
+  const hasStandardPrice = item.price_standard && item.price_standard > 0;
+  const needsProteinSelection = (hasSeafoodPrice || hasChickenPorkPrice) && !hasStandardPrice;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={getItemName(item)} size="md">
@@ -694,29 +773,143 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
           <p className="text-text-secondary">{getItemDescription(item)}</p>
         )}
 
-        {/* Sizes */}
-        {item.sizes && item.sizes.length > 0 && (
+        {/* Protein Selection */}
+        {needsProteinSelection && (
           <div>
-            <h4 className="font-semibold text-text mb-3">Select Size</h4>
+            <h4 className="font-semibold text-text mb-3">
+              {language === 'th' ? 'เลือกโปรตีน' : language === 'ru' ? 'Выберите белок' : language === 'zh' ? '选择蛋白质' : 'Select Protein'}
+            </h4>
             <div className="space-y-2">
-              {item.sizes.map((size) => (
-                <button
-                  key={size.name}
-                  onClick={() => setSelectedSize(size)}
-                  className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedSize?.name === size.name
-                    ? "border-accent bg-accent/5"
-                    : "border-border hover:border-accent/50"
-                    }`}
-                >
-                  <span className="font-medium text-text">{size.name}</span>
-                  <span className="text-accent font-semibold">
-                    {formatCurrency(size.price)}
-                  </span>
-                </button>
-              ))}
+              {hasSeafoodPrice && (
+                <>
+                  <button
+                    onClick={() => setSelectedProtein('shrimp')}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'shrimp'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🍤</span>
+                      <span>{language === 'th' ? 'กุ้ง' : language === 'ru' ? 'Креветки' : language === 'zh' ? '虾' : 'Shrimp'}</span>
+                    </span>
+                    <span className="font-semibold text-accent">{formatCurrency(item.price_seafood)}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedProtein('squid')}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'squid'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🦑</span>
+                      <span>{language === 'th' ? 'ปลาหมึก' : language === 'ru' ? 'Кальмары' : language === 'zh' ? '鱿鱼' : 'Squid'}</span>
+                    </span>
+                    <span className="font-semibold text-accent">{formatCurrency(item.price_seafood)}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedProtein('seafood')}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'seafood'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🍤🦑</span>
+                      <span>{language === 'th' ? 'ทะเล (กุ้ง+ปลาหมึก)' : language === 'ru' ? 'Морепродукты (креветки+кальмары)' : language === 'zh' ? '海鲜 (虾+鱿鱼)' : 'Seafood (Shrimp+Squid)'}</span>
+                    </span>
+                    <span className="font-semibold text-accent">{formatCurrency(item.price_seafood)}</span>
+                  </button>
+                </>
+              )}
+
+              {hasChickenPorkPrice && (
+                <>
+                  <button
+                    onClick={() => setSelectedProtein('chicken')}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'chicken'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🐔</span>
+                      <span>{language === 'th' ? 'ไก่' : language === 'ru' ? 'Курица' : language === 'zh' ? '鸡肉' : 'Chicken'}</span>
+                    </span>
+                    <span className="font-semibold text-accent">{formatCurrency(item.price_chicken_pork)}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setSelectedProtein('pork')}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'pork'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>🐷</span>
+                      <span>{language === 'th' ? 'หมู' : language === 'ru' ? 'Свинина' : language === 'zh' ? '猪肉' : 'Pork'}</span>
+                    </span>
+                    <span className="font-semibold text-accent">{formatCurrency(item.price_chicken_pork)}</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
+
+        {/* Spicy Level */}
+        <div>
+          <h4 className="font-semibold text-text mb-3">
+            {language === 'th' ? 'ระดับความเผ็ด' : language === 'ru' ? 'Уровень остроты' : language === 'zh' ? '辣度' : 'Spicy Level'}
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
+            {(['none', 'little', 'medium', 'very'] as const).map((level) => {
+              const labels = {
+                none: { en: 'No Spicy', th: 'ไม่เผ็ด', ru: 'Не острое', zh: '不辣', icon: '😊' },
+                little: { en: 'Little Spicy', th: 'เผ็ดน้อย', ru: 'Немного острое', zh: '微辣', icon: '🌶️' },
+                medium: { en: 'Medium Spicy', th: 'เผ็ดปานกลาง', ru: 'Средне острое', zh: '中辣', icon: '🌶️🌶️' },
+                very: { en: 'Very Spicy', th: 'เผ็ดมาก', ru: 'Очень острое', zh: '很辣', icon: '🌶️🌶️🌶️' },
+              };
+
+              return (
+                <button
+                  key={level}
+                  onClick={() => setSpicyLevel(level)}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${spicyLevel === level
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                >
+                  <span>{labels[level].icon}</span>
+                  <span className="text-sm">{labels[level][language]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Bigger Portion */}
+        <div>
+          <button
+            onClick={() => setBiggerPortion(!biggerPortion)}
+            className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${biggerPortion
+                ? 'border-accent bg-accent/10'
+                : 'border-gray-200 hover:border-gray-300'
+              }`}
+          >
+            <span className="flex items-center gap-2">
+              <span>🍽️</span>
+              <span className="font-semibold">
+                {language === 'th' ? 'เพิ่มขนาดใหญ่ขึ้น' : language === 'ru' ? 'Большая порция' : language === 'zh' ? '加大份量' : 'Bigger Portion'}
+              </span>
+            </span>
+            <span className="font-semibold text-accent">+฿20</span>
+          </button>
+        </div>
 
         {/* Addons */}
         {item.addons && item.addons.length > 0 && (
@@ -748,11 +941,17 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
             <span>{formatCurrency(calculateTotal())}</span>
           </div>
           <Button
-            onClick={() => onAdd(item, selectedSize, selectedAddons)}
+            onClick={() => {
+              if (needsProteinSelection && !selectedProtein) {
+                alert(language === 'th' ? 'กรุณาเลือกโปรตีน' : language === 'ru' ? 'Пожалуйста, выберите белок' : language === 'zh' ? '请选择蛋白质' : 'Please select a protein');
+                return;
+              }
+              onAdd(item, selectedProtein || undefined, getSelectedPrice(), spicyLevel, biggerPortion, selectedAddons);
+            }}
             fullWidth
             size="lg"
           >
-            Add to Cart
+            {language === 'th' ? 'เพิ่มลงตะกร้า' : language === 'ru' ? 'Добавить в корзину' : language === 'zh' ? '加入购物车' : 'Add to Cart'}
           </Button>
         </div>
       </div>
@@ -794,20 +993,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
     return menuItem.name || 'Item';
   };
 
-  // Get first available price (standard > seafood > chicken_pork)
-  const getItemDisplayPrice = (menuItem: MenuItem): number => {
-    if (menuItem.price_standard && menuItem.price_standard > 0) {
-      return menuItem.price_standard;
-    }
-    if (menuItem.price_seafood && menuItem.price_seafood > 0) {
-      return menuItem.price_seafood;
-    }
-    if (menuItem.price_chicken_pork && menuItem.price_chicken_pork > 0) {
-      return menuItem.price_chicken_pork;
-    }
-    return 0;
-  };
-
   const subtotal = cart.reduce(
     (sum, item) => sum + item.itemTotal * item.quantity,
     0
@@ -832,12 +1017,12 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         menu_item_id: item.id,
         name: getItemName(item),
         quantity: item.quantity,
-        selected_price: item.selectedSize ? item.selectedSize.price : getItemDisplayPrice(item),
+        selected_price: item.selectedPrice,
         price_type: "standard" as const,
-        selected_size: item.selectedSize,
+        selected_size: item.selectedProtein ? { name: item.selectedProtein, price: item.selectedPrice } : undefined,
         selected_addons: item.selectedAddons,
         item_total: item.itemTotal,
-        special_instructions: undefined,
+        special_instructions: item.spicyLevel && item.spicyLevel !== 'none' ? `Spicy: ${item.spicyLevel}${item.biggerPortion ? ', Bigger portion' : ''}` : (item.biggerPortion ? 'Bigger portion' : undefined),
       })),
       subtotal,
       tax,
@@ -921,7 +1106,9 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
             <div key={index} className="flex justify-between text-sm">
               <span className="text-text-secondary">
                 {item.quantity}x {getItemName(item)}
-                {item.selectedSize && ` (${item.selectedSize.name})`}
+                {item.selectedProtein && ` (${item.selectedProtein})`}
+                {item.spicyLevel && item.spicyLevel !== 'none' && ` 🌶️`}
+                {item.biggerPortion && ` 🍽️`}
               </span>
               <span className="text-text">
                 {formatCurrency(item.itemTotal * item.quantity)}
