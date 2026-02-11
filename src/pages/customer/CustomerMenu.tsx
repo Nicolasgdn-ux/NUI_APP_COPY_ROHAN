@@ -228,20 +228,12 @@ const CustomerMenu: React.FC = () => {
     }
   };
 
-  // Get item name/description in selected language
+  // Get item name in selected language
   const getItemName = (item: MenuItem): string => {
     if (typeof item.name === 'object') {
       return item.name[language] || item.name.en || 'Item';
     }
     return item.name || 'Item';
-  };
-
-  const getItemDescription = (item: MenuItem): string | undefined => {
-    if (!item.description) return undefined;
-    if (typeof item.description === 'object') {
-      return item.description[language] || item.description.en;
-    }
-    return item.description;
   };
 
   return (
@@ -760,6 +752,14 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Get item name/description in selected language
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object') {
+      return item.name.en || item.name.th || Object.values(item.name)[0] as string || 'Item';
+    }
+    return item.name || 'Item';
+  };
+
   const subtotal = cart.reduce(
     (sum, item) => sum + item.itemTotal * item.quantity,
     0
@@ -784,7 +784,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         menu_item_id: item.id,
         name: getItemName(item),
         quantity: item.quantity,
-        selected_price: item.selectedSize ? item.selectedSize.price : item.price_standard,
+        selected_price: (item.selectedSize ? item.selectedSize.price : (typeof item.price_standard === 'string' ? parseFloat(item.price_standard) : item.price_standard)) || 0,
         price_type: "standard" as const,
         selected_size: item.selectedSize,
         selected_addons: item.selectedAddons,
