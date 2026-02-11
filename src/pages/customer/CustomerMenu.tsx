@@ -41,20 +41,30 @@ const CustomerMenu: React.FC = () => {
   const tableId = tableParam || "Takeaway";
   const isTableOrder = tableId !== "Takeaway";
 
-  // SessionID persistant - même personne = même sessionID
-  const [sessionId] = useState<string>(() => {
-    const key = `session_table_${tableId}`;
-    const existing = sessionStorage.getItem(key);
-    if (existing) return existing;
+  // SessionID persistant - même personne = même sessionID (not used in orders for now)
+  // const [sessionId] = useState<string>(() => {
+  //   const key = `session_table_${tableId}`;
+  //   const existing = sessionStorage.getItem(key);
+  //   if (existing) return existing;
 
-    const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    sessionStorage.setItem(key, newId);
-    return newId;
-  });
+  //   const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  //   sessionStorage.setItem(key, newId);
+  //   return newId;
+  // });
 
-  // Language selection
+  // Language selection with auto-detection
   const [language, setLanguage] = useState<'en' | 'th' | 'ru' | 'zh'>(() => {
-    return (localStorage.getItem('userLanguage') || 'en') as any;
+    const saved = localStorage.getItem('userLanguage');
+    if (saved) return saved as any;
+
+    // Auto-detect browser language
+    const browserLang = navigator.language || navigator.languages?.[0] || 'en';
+    const langCode = browserLang.toLowerCase().split('-')[0];
+
+    if (langCode === 'zh') return 'zh';
+    if (langCode === 'ru') return 'ru';
+    if (langCode === 'th') return 'th';
+    return 'en';
   });
 
   useEffect(() => {
@@ -504,7 +514,6 @@ const CustomerMenu: React.FC = () => {
         restaurantId={restaurant.id}
         tableId={tableId}
         isTableOrder={isTableOrder}
-        sessionId={sessionId}
         onClose={() => setShowCheckout(false)}
         onSuccess={() => {
           setCart([]);
@@ -785,8 +794,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('shrimp')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'shrimp'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -799,8 +808,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('squid')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'squid'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -813,8 +822,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('seafood')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'seafood'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -831,8 +840,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('chicken')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'chicken'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -845,8 +854,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('pork')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'pork'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -880,8 +889,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   key={level}
                   onClick={() => setSpicyLevel(level)}
                   className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${spicyLevel === level
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-accent bg-accent/10'
+                    : 'border-gray-200 hover:border-gray-300'
                     }`}
                 >
                   <span>{labels[level].icon}</span>
@@ -897,8 +906,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
           <button
             onClick={() => setBiggerPortion(!biggerPortion)}
             className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${biggerPortion
-                ? 'border-accent bg-accent/10'
-                : 'border-gray-200 hover:border-gray-300'
+              ? 'border-accent bg-accent/10'
+              : 'border-gray-200 hover:border-gray-300'
               }`}
           >
             <span className="flex items-center gap-2">
@@ -966,7 +975,6 @@ interface CheckoutModalProps {
   restaurantId: string;
   tableId: string;
   isTableOrder: boolean;
-  sessionId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -977,7 +985,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   restaurantId,
   tableId,
   isTableOrder,
-  sessionId,
   onClose,
   onSuccess,
 }) => {
@@ -997,8 +1004,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
     (sum, item) => sum + item.itemTotal * item.quantity,
     0
   );
-  const tax = subtotal * 0.05; // 5% tax
-  const total = subtotal + tax;
+  const total = subtotal;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1012,7 +1018,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         | "qr"
         | "counter",
       table_number: isTableOrder ? tableId : undefined,
-      session_id: sessionId,
       items: cart.map((item) => ({
         menu_item_id: item.id,
         name: getItemName(item),
@@ -1025,7 +1030,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         special_instructions: item.spicyLevel && item.spicyLevel !== 'none' ? `Spicy: ${item.spicyLevel}${item.biggerPortion ? ', Bigger portion' : ''}` : (item.biggerPortion ? 'Bigger portion' : undefined),
       })),
       subtotal,
-      tax,
+      tax: 0,
       total,
       customer_notes: notes,
     };
@@ -1116,15 +1121,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           ))}
           <div className="border-t border-border pt-2 mt-2 space-y-1">
-            <div className="flex justify-between text-text-secondary">
-              <span>Subtotal</span>
-              <span>{formatCurrency(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-text-secondary">
-              <span>Tax (5%)</span>
-              <span>{formatCurrency(tax)}</span>
-            </div>
-            <div className="flex justify-between text-xl font-bold text-text pt-2 border-t border-border">
+            <div className="flex justify-between text-xl font-bold text-text">
               <span>Total</span>
               <span>{formatCurrency(total)}</span>
             </div>
