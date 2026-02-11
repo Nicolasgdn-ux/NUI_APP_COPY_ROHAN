@@ -117,6 +117,20 @@ const CustomerMenu: React.FC = () => {
     return item.name || 'Item';
   };
 
+  // Get first available price (standard > seafood > chicken_pork)
+  const getDisplayPrice = (item: MenuItem): number | null => {
+    if (item.price_standard && item.price_standard > 0) {
+      return item.price_standard;
+    }
+    if (item.price_seafood && item.price_seafood > 0) {
+      return item.price_seafood;
+    }
+    if (item.price_chicken_pork && item.price_chicken_pork > 0) {
+      return item.price_chicken_pork;
+    }
+    return null;
+  };
+
   const categories = [
     "all",
     ...new Set(menuItems.map((item) => item.category).filter(Boolean)),
@@ -136,7 +150,7 @@ const CustomerMenu: React.FC = () => {
     selectedSize?: any,
     selectedAddons: any[] = []
   ) => {
-    const basePrice = selectedSize ? selectedSize.price : (typeof item.price_standard === 'string' ? parseFloat(item.price_standard) : item.price_standard) || 0;
+    const basePrice = selectedSize ? selectedSize.price : (getDisplayPrice(item) || 0);
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
@@ -351,13 +365,21 @@ const CustomerMenu: React.FC = () => {
 
                     <div className="flex items-end justify-between mt-2">
                       <div>
-                        <p className="font-bold text-gray-800">
-                          {item.sizes && item.sizes.length > 0
-                            ? formatCurrency(
-                              Math.min(...item.sizes.map((s) => s.price))
-                            )
-                            : formatCurrency(item.price_standard)}
-                        </p>
+                        {item.sizes && item.sizes.length > 0 ? (
+                          <p className="font-bold text-gray-800">
+                            {formatCurrency(Math.min(...item.sizes.map((s) => s.price)))}
+                          </p>
+                        ) : (
+                          <>
+                            {getDisplayPrice(item) !== null ? (
+                              <p className="font-bold text-gray-800">
+                                {formatCurrency(getDisplayPrice(item)!)}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-gray-500">Multiple prices</p>
+                            )}
+                          </>
+                        )}
                       </div>
 
                       {item.is_available && (
@@ -496,6 +518,13 @@ const CartModal: React.FC<CartModalProps> = ({
   onCheckout,
   language,
 }) => {
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object') {
+      return item.name[language] || item.name.en || 'Item';
+    }
+    return item.name || 'Item';
+  };
+
   const total = cart.reduce(
     (sum, item) => sum + item.itemTotal * item.quantity,
     0
@@ -604,6 +633,27 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
 
   if (!item) return null;
 
+  const getItemName = (menuItem: MenuItem): string => {
+    if (typeof menuItem.name === 'object') {
+      return menuItem.name[language] || menuItem.name.en || 'Item';
+    }
+    return menuItem.name || 'Item';
+  };
+
+  // Get first available price (standard > seafood > chicken_pork)
+  const getItemDisplayPrice = (menuItem: MenuItem): number => {
+    if (menuItem.price_standard && menuItem.price_standard > 0) {
+      return menuItem.price_standard;
+    }
+    if (menuItem.price_seafood && menuItem.price_seafood > 0) {
+      return menuItem.price_seafood;
+    }
+    if (menuItem.price_chicken_pork && menuItem.price_chicken_pork > 0) {
+      return menuItem.price_chicken_pork;
+    }
+    return 0;
+  };
+
   const getItemDescription = (item: MenuItem): string | undefined => {
     if (!item.description) return undefined;
     if (typeof item.description === 'object') {
@@ -621,7 +671,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   };
 
   const calculateTotal = () => {
-    const basePrice = selectedSize ? selectedSize.price : (typeof item.price_standard === 'string' ? parseFloat(item.price_standard) : item.price_standard) || 0;
+    const basePrice = selectedSize ? selectedSize.price : getItemDisplayPrice(item);
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
@@ -737,6 +787,27 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const getItemName = (menuItem: MenuItem): string => {
+    if (typeof menuItem.name === 'object') {
+      return menuItem.name.en || menuItem.name.th || Object.values(menuItem.name)[0] as string || 'Item';
+    }
+    return menuItem.name || 'Item';
+  };
+
+  // Get first available price (standard > seafood > chicken_pork)
+  const getItemDisplayPrice = (menuItem: MenuItem): number => {
+    if (menuItem.price_standard && menuItem.price_standard > 0) {
+      return menuItem.price_standard;
+    }
+    if (menuItem.price_seafood && menuItem.price_seafood > 0) {
+      return menuItem.price_seafood;
+    }
+    if (menuItem.price_chicken_pork && menuItem.price_chicken_pork > 0) {
+      return menuItem.price_chicken_pork;
+    }
+    return 0;
+  };
+
   const subtotal = cart.reduce(
     (sum, item) => sum + item.itemTotal * item.quantity,
     0
@@ -761,7 +832,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         menu_item_id: item.id,
         name: getItemName(item),
         quantity: item.quantity,
-        selected_price: (item.selectedSize ? item.selectedSize.price : (typeof item.price_standard === 'string' ? parseFloat(item.price_standard) : item.price_standard)) || 0,
+        selected_price: item.selectedSize ? item.selectedSize.price : getItemDisplayPrice(item),
         price_type: "standard" as const,
         selected_size: item.selectedSize,
         selected_addons: item.selectedAddons,
