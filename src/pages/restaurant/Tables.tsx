@@ -27,14 +27,17 @@ const Tables: React.FC = () => {
         (order) => order.table_number && order.is_paid !== true
     );
 
-    const tableTotals: Record<string, { total: number; count: number }> = {};
+    const tableTotals: Record<string, { total: number; count: number; allCompleted: boolean }> = {};
     unpaidOrders.forEach((order) => {
         const table = order.table_number as string;
         if (!tableTotals[table]) {
-            tableTotals[table] = { total: 0, count: 0 };
+            tableTotals[table] = { total: 0, count: 0, allCompleted: true };
         }
         tableTotals[table].total += order.total || 0;
         tableTotals[table].count += 1;
+        if (order.status !== "completed") {
+            tableTotals[table].allCompleted = false;
+        }
     });
 
     const handlePaid = async (tableNumber: string) => {
@@ -77,6 +80,8 @@ const Tables: React.FC = () => {
                     const total = data?.total || 0;
                     const count = data?.count || 0;
                     const hasOrders = total > 0;
+                    const allCompleted = data?.allCompleted ?? false;
+                    const canPay = hasOrders && allCompleted;
 
                     return (
                         <Card key={table} className="p-4 flex flex-col gap-3">
@@ -95,14 +100,14 @@ const Tables: React.FC = () => {
                             </div>
 
                             <Button
-                                variant={hasOrders ? "primary" : "outline"}
+                                variant={canPay ? "primary" : "outline"}
                                 size="sm"
                                 onClick={() => handlePaid(table)}
-                                disabled={!hasOrders}
+                                disabled={!canPay}
                                 icon={<CheckCircle className="w-4 h-4" />}
                                 fullWidth
                             >
-                                Already Paid
+                                {canPay ? "Already Paid" : "Complete orders first"}
                             </Button>
                         </Card>
                     );

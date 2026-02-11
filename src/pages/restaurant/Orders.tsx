@@ -19,8 +19,8 @@ import {
 } from "../../components/ui";
 import {
   subscribeToOrders,
-  updateOrderStatus,
   deleteOrder,
+  updateOrderFields,
 } from "../../services/restaurantService";
 import type { Order } from "../../config/supabase";
 import { formatDateTime, formatCurrency, playSound } from "../../utils/helpers";
@@ -71,24 +71,31 @@ const Orders: React.FC = () => {
       );
     });
 
-  const handleStatusUpdate = async (
-    orderId: string,
-    newStatus: string,
-    extraUpdates?: Record<string, any>
-  ) => {
-    const success = await updateOrderStatus(orderId, newStatus, undefined, extraUpdates);
-    if (!success) {
-      alert("Failed to update order status");
+
+  const handleFinishItem = async (order: Order, itemIndex: number) => {
+    const items = Array.isArray(order.items) ? [...order.items] : [];
+    items.splice(itemIndex, 1);
+
+    const subtotal = items.reduce((sum: number, item: any) => {
+      const lineTotal = (item.item_total || 0) * (item.quantity || 1);
+      return sum + lineTotal;
+    }, 0);
+
+    const updates: Partial<Order> = {
+      items,
+      subtotal,
+      total: subtotal,
+      status: items.length === 0 ? "completed" : order.status,
+    };
+
+    const result = await updateOrderFields(order.id, updates);
+    if (!result.success) {
+      alert("Failed to mark item as finished");
       return;
     }
 
-    // Optimistic UI update
     setOrders((prev) =>
-      prev.map((order) =>
-        order.id === orderId
-          ? { ...order, status: newStatus as Order["status"] }
-          : order
-      )
+      prev.map((o) => (o.id === order.id ? { ...o, ...updates } : o))
     );
   };
 
@@ -290,7 +297,7 @@ const Orders: React.FC = () => {
                       variant="secondary"
                       size="sm"
                       fullWidth
-                      onClick={() => handleStatusUpdate(order.id, "completed")}
+                      onClick={() => handleFinishItem(order, index)}
                     >
                       Finished
                     </Button>

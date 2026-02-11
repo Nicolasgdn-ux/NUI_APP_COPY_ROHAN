@@ -95,7 +95,8 @@ export const markTablePaid = async (
     .update({ is_paid: true, payment_status: "paid" })
     .eq("restaurant_id", restaurantId)
     .eq("table_number", tableNumber)
-    .eq("is_paid", false);
+    .eq("is_paid", false)
+    .eq("status", "completed");
 
   return !error;
 };
@@ -133,6 +134,19 @@ export const deleteOrder = async (orderId: string) => {
     .eq("id", orderId);
 
   return !error;
+};
+
+// Update order fields (items, totals, status, etc.)
+export const updateOrderFields = async (
+  orderId: string,
+  updates: Partial<Order>
+) => {
+  const { error } = await supabase
+    .from("orders")
+    .update(updates)
+    .eq("id", orderId);
+
+  return { success: !error, error };
 };
 
 // Normalize MenuItem data from Supabase (prices may be strings, ensure they're numbers)
