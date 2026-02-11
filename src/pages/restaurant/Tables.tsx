@@ -43,7 +43,17 @@ const Tables: React.FC = () => {
         const success = await markTablePaid(user.restaurant_id, tableNumber);
         if (!success) {
             alert("Failed to mark table as paid");
+            return;
         }
+
+        // Optimistically update local state so totals reset immediately
+        setOrders((prev) =>
+            prev.map((order) =>
+                order.table_number === tableNumber
+                    ? { ...order, is_paid: true }
+                    : order
+            )
+        );
     };
 
     if (loading) {

@@ -79,7 +79,17 @@ const Orders: React.FC = () => {
     const success = await updateOrderStatus(orderId, newStatus, undefined, extraUpdates);
     if (!success) {
       alert("Failed to update order status");
+      return;
     }
+
+    // Optimistic UI update
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.id === orderId
+          ? { ...order, status: newStatus as Order["status"] }
+          : order
+      )
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -120,7 +130,9 @@ const Orders: React.FC = () => {
     return <Loading text="Loading orders..." />;
   }
 
-  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const pendingCount = orders.filter(
+    (o) => o.status === "pending" || o.status === "accepted"
+  ).length;
   const pendingItems = filteredOrders.flatMap((order) =>
     (order.items || []).map((item: any, index: number) => ({
       order,
