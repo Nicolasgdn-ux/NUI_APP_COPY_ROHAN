@@ -128,6 +128,7 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_method TEXT,
   payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'paid', 'failed')),
   payment_transaction_id TEXT,
+  is_paid BOOLEAN NOT NULL DEFAULT FALSE,
   customer_notes TEXT,
   internal_notes TEXT,
   accepted_at TIMESTAMPTZ,

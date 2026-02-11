@@ -141,11 +141,10 @@ const Orders: React.FC = () => {
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              statusFilter === status
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
                 ? "bg-accent text-white"
                 : "bg-bg-subtle text-text-secondary hover:bg-border"
-            }`}
+              }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
             {status === "pending" && ` (${pendingCount})`}
@@ -169,9 +168,8 @@ const Orders: React.FC = () => {
           {filteredOrders.map((order) => (
             <Card
               key={order.id}
-              className={`hover:shadow-lg transition-shadow ${
-                order.status === "pending" ? "border-l-4 border-l-warning" : ""
-              }`}
+              className={`hover:shadow-lg transition-shadow ${order.status === "pending" ? "border-l-4 border-l-warning" : ""
+                }`}
             >
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 {/* Order Info */}
@@ -189,7 +187,12 @@ const Orders: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    {getStatusBadge(order.status)}
+                    <div className="flex items-center gap-2">
+                      {order.is_paid && (
+                        <Badge variant="success">Paid</Badge>
+                      )}
+                      {getStatusBadge(order.status)}
+                    </div>
                   </div>
 
                   {/* Details */}
@@ -229,6 +232,18 @@ const Orders: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Items summary */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="text-sm text-text-secondary">
+                      <span className="font-medium text-text">Items:</span>{" "}
+                      {order.items
+                        .slice(0, 3)
+                        .map((item: any) => `${item.quantity}x ${item.name}`)
+                        .join(" • ")}
+                      {order.items.length > 3 && " • ..."}
+                    </div>
+                  )}
 
                   {/* Customer Notes */}
                   {order.customer_notes && (
@@ -365,8 +380,8 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
               order.status === "completed"
                 ? "success"
                 : order.status === "pending"
-                ? "warning"
-                : "neutral"
+                  ? "warning"
+                  : "neutral"
             }
           >
             {order.status}
@@ -415,14 +430,19 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                   <p className="font-medium text-text">
                     {item.quantity}x {item.name}
                   </p>
-                  {item.size && (
+                  {item.selected_size?.name && (
                     <p className="text-sm text-text-secondary">
-                      Size: {item.size}
+                      Protein: {item.selected_size.name}
                     </p>
                   )}
-                  {item.addons && item.addons.length > 0 && (
+                  {item.selected_addons && item.selected_addons.length > 0 && (
                     <p className="text-sm text-text-secondary">
-                      Add-ons: {item.addons.join(", ")}
+                      Add-ons: {item.selected_addons.map((a: any) => a.name).join(", ")}
+                    </p>
+                  )}
+                  {item.special_instructions && (
+                    <p className="text-sm text-text-secondary">
+                      Notes: {item.special_instructions}
                     </p>
                   )}
                 </div>
@@ -439,10 +459,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
           <div className="flex justify-between text-text-secondary">
             <span>Subtotal</span>
             <span>{formatCurrency(order.subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-text-secondary">
-            <span>Tax</span>
-            <span>{formatCurrency(order.tax)}</span>
           </div>
           {order.discount && order.discount > 0 && (
             <div className="flex justify-between text-success">

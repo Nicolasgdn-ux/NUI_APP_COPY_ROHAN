@@ -63,6 +63,7 @@ export interface User {
 }
 
 export interface MenuItem {
+  id_menu?: number;
   id: string;
   restaurant_id: string;
 
@@ -102,6 +103,7 @@ export interface Order {
   order_type: "qr" | "counter" | "phone" | "table";
   table_number?: string;
   session_id?: string;
+  is_paid?: boolean;
   customer_name?: string;
   customer_phone?: string;
   items: OrderItem[];

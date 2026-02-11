@@ -12,11 +12,13 @@ import {
   LayoutDashboard,
   ShoppingBag,
   UtensilsCrossed,
+  Table as TableIcon,
   FileText,
   Settings,
 } from "lucide-react";
 import RestaurantHome from "./RestaurantHome";
 import Orders from "./Orders";
+import Tables from "./Tables";
 import Menu from "./Menu";
 import Reports from "./Reports";
 import RestaurantSettings from "./RestaurantSettings";
@@ -52,6 +54,7 @@ const RestaurantDashboard: React.FC = () => {
   const navItems = [
     { path: "/restaurant", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/restaurant/orders", icon: ShoppingBag, label: "Orders" },
+    { path: "/restaurant/tables", icon: TableIcon, label: "Tables" },
     { path: "/restaurant/menu", icon: UtensilsCrossed, label: "Menu" },
     { path: "/restaurant/reports", icon: FileText, label: "Reports" },
     { path: "/restaurant/settings", icon: Settings, label: "Settings" },
@@ -93,11 +96,10 @@ const RestaurantDashboard: React.FC = () => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-                    isActive
+                  className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${isActive
                       ? "border-accent text-accent font-medium"
                       : "border-transparent text-text-secondary hover:text-text"
-                  }`}
+                    }`}
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.label}</span>
@@ -113,6 +115,7 @@ const RestaurantDashboard: React.FC = () => {
         <Routes>
           <Route index element={<RestaurantHome />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="tables" element={<Tables />} />
           <Route path="menu" element={<Menu />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<RestaurantSettings />} />

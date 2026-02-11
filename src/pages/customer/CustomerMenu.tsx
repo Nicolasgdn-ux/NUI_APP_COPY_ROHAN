@@ -19,8 +19,9 @@ import {
 import {
   subscribeToMenuItems,
   createOrder,
+  subscribeToTableOrders,
 } from "../../services/restaurantService";
-import type { MenuItem } from "../../config/supabase";
+import type { MenuItem, Order } from "../../config/supabase";
 import { formatCurrency } from "../../utils/helpers";
 import { supabase } from "../../config/supabase";
 
@@ -73,6 +74,7 @@ const CustomerMenu: React.FC = () => {
 
   const [restaurant, setRestaurant] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [tableOrders, setTableOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -99,6 +101,22 @@ const CustomerMenu: React.FC = () => {
       };
     }
   }, [restaurant]);
+
+  useEffect(() => {
+    if (restaurant?.id && isTableOrder) {
+      const subscription = subscribeToTableOrders(
+        restaurant.id,
+        tableId,
+        (data) => {
+          setTableOrders(data);
+        }
+      );
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [restaurant, isTableOrder, tableId]);
 
   const loadRestaurant = async () => {
     if (!slug) {
@@ -167,6 +185,32 @@ const CustomerMenu: React.FC = () => {
     return null;
   };
 
+  const getPriceLabel = (type: "standard" | "seafood" | "chicken_pork"): string => {
+    const labels = {
+      standard: {
+        en: "Standard",
+        th: "ธรรมดา",
+        ru: "Стандарт",
+        zh: "标准",
+      },
+      seafood: {
+        en: "Seafood",
+        th: "ทะเล",
+        ru: "Морепродукты",
+        zh: "海鲜",
+      },
+      chicken_pork: {
+        en: "Chicken/Pork",
+        th: "ไก่/หมู",
+        ru: "Курица/Свинина",
+        zh: "鸡肉/猪肉",
+      },
+    };
+
+    return labels[type][language] || labels[type].en;
+  };
+
+
   // Sort categories by first appearance in menu (by id_menu from CSV)
   const sortedCategories = () => {
     const categoriesInOrder: string[] = [];
@@ -200,6 +244,15 @@ const CustomerMenu: React.FC = () => {
       categoryFilter === "all" || item.category === categoryFilter;
     return matchesSearch && matchesCategory && item.is_available;
   });
+
+  const sortedFilteredItems =
+    categoryFilter === "all"
+      ? [...filteredItems].sort((a, b) => {
+        const aIdMenu = a.id_menu ?? 0;
+        const bIdMenu = b.id_menu ?? 0;
+        return aIdMenu - bIdMenu;
+      })
+      : filteredItems;
 
   const addToCart = (
     item: MenuItem,
@@ -384,15 +437,78 @@ const CustomerMenu: React.FC = () => {
         </div>
       </div>
 
+      {/* Table Orders Summary */}
+      {isTableOrder && (
+        <div className="max-w-screen-lg mx-auto px-4 py-4">
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-text">
+                {language === 'th'
+                  ? `ออเดอร์โต๊ะ ${tableId}`
+                  : language === 'ru'
+                    ? `Заказы стола ${tableId}`
+                    : language === 'zh'
+                      ? `桌号 ${tableId} 的订单`
+                      : `Table ${tableId} Orders`}
+              </h3>
+              <span className="text-sm text-text-secondary">
+                {tableOrders.length} orders
+              </span>
+            </div>
+
+            {tableOrders.length === 0 ? (
+              <p className="text-sm text-text-secondary">
+                {language === 'th'
+                  ? 'ยังไม่มีรายการสั่งซื้อสำหรับโต๊ะนี้'
+                  : language === 'ru'
+                    ? 'Пока нет заказов для этого стола'
+                    : language === 'zh'
+                      ? '该桌暂无订单'
+                      : 'No orders yet for this table'}
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {tableOrders.map((order) => (
+                  <div key={order.id} className="text-sm">
+                    <div className="font-medium text-text">
+                      {order.items?.map((item: any) => `${item.quantity}x ${item.name}`).join(" • ")}
+                    </div>
+                    <div className="text-text-secondary">
+                      {formatCurrency(order.total)}
+                    </div>
+                  </div>
+                ))}
+                <div className="border-t border-border pt-2 flex justify-between font-semibold">
+                  <span>
+                    {language === 'th'
+                      ? 'รวมทั้งหมด'
+                      : language === 'ru'
+                        ? 'Итого'
+                        : language === 'zh'
+                          ? '总计'
+                          : 'Total'}
+                  </span>
+                  <span>
+                    {formatCurrency(
+                      tableOrders.reduce((sum, order) => sum + (order.total || 0), 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* Menu Grid */}
       <div className="max-w-screen-lg mx-auto px-4 py-4">
-        {filteredItems.length === 0 ? (
+        {sortedFilteredItems.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-400 text-sm">No items found</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {filteredItems.map((item) => {
+            {sortedFilteredItems.map((item) => {
               const quantity = getItemQuantity(item.id);
 
               return (
@@ -427,22 +543,39 @@ const CustomerMenu: React.FC = () => {
                     </h3>
 
                     <div className="flex items-end justify-between mt-2">
-                      <div>
-                        {item.sizes && item.sizes.length > 0 ? (
-                          <p className="font-bold text-gray-800">
-                            {formatCurrency(Math.min(...item.sizes.map((s) => s.price)))}
-                          </p>
-                        ) : (
-                          <>
-                            {getDisplayPrice(item) !== null ? (
-                              <p className="font-bold text-gray-800">
-                                {formatCurrency(getDisplayPrice(item)!)}
-                              </p>
-                            ) : (
-                              <p className="text-xs text-gray-500">Multiple prices</p>
-                            )}
-                          </>
-                        )}
+                      <div className="space-y-0.5">
+                        {[
+                          item.price_standard && item.price_standard > 0
+                            ? {
+                              key: "standard",
+                              label: getPriceLabel("standard"),
+                              value: item.price_standard,
+                            }
+                            : null,
+                          item.price_seafood && item.price_seafood > 0
+                            ? {
+                              key: "seafood",
+                              label: getPriceLabel("seafood"),
+                              value: item.price_seafood,
+                            }
+                            : null,
+                          item.price_chicken_pork && item.price_chicken_pork > 0
+                            ? {
+                              key: "chicken_pork",
+                              label: getPriceLabel("chicken_pork"),
+                              value: item.price_chicken_pork,
+                            }
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .map((price: any) => (
+                            <p key={price.key} className="text-sm font-bold text-gray-800">
+                              <span className="text-[11px] text-gray-500 mr-1">
+                                {price.label}:
+                              </span>
+                              {formatCurrency(price.value)}
+                            </p>
+                          ))}
                       </div>
 
                       {item.is_available && (
@@ -754,7 +887,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
 
   const calculateTotal = () => {
     const basePrice = getSelectedPrice();
-    const portionExtra = biggerPortion ? 20 : 0;
+    const portionExtra = cookedDish && biggerPortion ? 20 : 0;
     const addonsTotal = selectedAddons.reduce(
       (sum, addon) => sum + addon.price,
       0
@@ -762,10 +895,14 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
     return (basePrice || 0) + portionExtra + addonsTotal;
   };
 
+  const cookedDish = !["Beverage", "Dessert", "Add-ons"].includes(
+    item.category || ""
+  );
   const hasSeafoodPrice = item.price_seafood && item.price_seafood > 0;
   const hasChickenPorkPrice = item.price_chicken_pork && item.price_chicken_pork > 0;
   const hasStandardPrice = item.price_standard && item.price_standard > 0;
-  const needsProteinSelection = (hasSeafoodPrice || hasChickenPorkPrice) && !hasStandardPrice;
+  const needsProteinSelection =
+    cookedDish && (hasSeafoodPrice || hasChickenPorkPrice) && !hasStandardPrice;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={getItemName(item)} size="md">
@@ -794,8 +931,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('shrimp')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'shrimp'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -808,8 +945,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('squid')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'squid'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -822,8 +959,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('seafood')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'seafood'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -840,8 +977,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('chicken')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'chicken'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -854,8 +991,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('pork')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'pork'
-                      ? 'border-accent bg-accent/10'
-                      : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -870,55 +1007,59 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
           </div>
         )}
 
-        {/* Spicy Level */}
-        <div>
-          <h4 className="font-semibold text-text mb-3">
-            {language === 'th' ? 'ระดับความเผ็ด' : language === 'ru' ? 'Уровень остроты' : language === 'zh' ? '辣度' : 'Spicy Level'}
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            {(['none', 'little', 'medium', 'very'] as const).map((level) => {
-              const labels = {
-                none: { en: 'No Spicy', th: 'ไม่เผ็ด', ru: 'Не острое', zh: '不辣', icon: '😊' },
-                little: { en: 'Little Spicy', th: 'เผ็ดน้อย', ru: 'Немного острое', zh: '微辣', icon: '🌶️' },
-                medium: { en: 'Medium Spicy', th: 'เผ็ดปานกลาง', ru: 'Средне острое', zh: '中辣', icon: '🌶️🌶️' },
-                very: { en: 'Very Spicy', th: 'เผ็ดมาก', ru: 'Очень острое', zh: '很辣', icon: '🌶️🌶️🌶️' },
-              };
+        {cookedDish && (
+          <>
+            {/* Spicy Level */}
+            <div>
+              <h4 className="font-semibold text-text mb-3">
+                {language === 'th' ? 'ระดับความเผ็ด' : language === 'ru' ? 'Уровень остроты' : language === 'zh' ? '辣度' : 'Spicy Level'}
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {(['none', 'little', 'medium', 'very'] as const).map((level) => {
+                  const labels = {
+                    none: { en: 'No Spicy', th: 'ไม่เผ็ด', ru: 'Не острое', zh: '不辣', icon: '😊' },
+                    little: { en: 'Little Spicy', th: 'เผ็ดน้อย', ru: 'Немного острое', zh: '微辣', icon: '🌶️' },
+                    medium: { en: 'Medium Spicy', th: 'เผ็ดปานกลาง', ru: 'Средне острое', zh: '中辣', icon: '🌶️🌶️' },
+                    very: { en: 'Very Spicy', th: 'เผ็ดมาก', ru: 'Очень острое', zh: '很辣', icon: '🌶️🌶️🌶️' },
+                  };
 
-              return (
-                <button
-                  key={level}
-                  onClick={() => setSpicyLevel(level)}
-                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${spicyLevel === level
+                  return (
+                    <button
+                      key={level}
+                      onClick={() => setSpicyLevel(level)}
+                      className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${spicyLevel === level
+                          ? 'border-accent bg-accent/10'
+                          : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                    >
+                      <span>{labels[level].icon}</span>
+                      <span className="text-sm">{labels[level][language]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bigger Portion */}
+            <div>
+              <button
+                onClick={() => setBiggerPortion(!biggerPortion)}
+                className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${biggerPortion
                     ? 'border-accent bg-accent/10'
                     : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                >
-                  <span>{labels[level].icon}</span>
-                  <span className="text-sm">{labels[level][language]}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Bigger Portion */}
-        <div>
-          <button
-            onClick={() => setBiggerPortion(!biggerPortion)}
-            className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${biggerPortion
-              ? 'border-accent bg-accent/10'
-              : 'border-gray-200 hover:border-gray-300'
-              }`}
-          >
-            <span className="flex items-center gap-2">
-              <span>🍽️</span>
-              <span className="font-semibold">
-                {language === 'th' ? 'เพิ่มขนาดใหญ่ขึ้น' : language === 'ru' ? 'Большая порция' : language === 'zh' ? '加大份量' : 'Bigger Portion'}
-              </span>
-            </span>
-            <span className="font-semibold text-accent">+฿20</span>
-          </button>
-        </div>
+                  }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span>🍽️</span>
+                  <span className="font-semibold">
+                    {language === 'th' ? 'เพิ่มขนาดใหญ่ขึ้น' : language === 'ru' ? 'Большая порция' : language === 'zh' ? '加大份量' : 'Bigger Portion'}
+                  </span>
+                </span>
+                <span className="font-semibold text-accent">+฿20</span>
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Addons */}
         {item.addons && item.addons.length > 0 && (
@@ -955,7 +1096,14 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                 alert(language === 'th' ? 'กรุณาเลือกโปรตีน' : language === 'ru' ? 'Пожалуйста, выберите белок' : language === 'zh' ? '请选择蛋白质' : 'Please select a protein');
                 return;
               }
-              onAdd(item, selectedProtein || undefined, getSelectedPrice(), spicyLevel, biggerPortion, selectedAddons);
+              onAdd(
+                item,
+                selectedProtein || undefined,
+                getSelectedPrice(),
+                cookedDish ? spicyLevel : 'none',
+                cookedDish ? biggerPortion : false,
+                selectedAddons
+              );
             }}
             fullWidth
             size="lg"
@@ -1018,12 +1166,17 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
         | "qr"
         | "counter",
       table_number: isTableOrder ? tableId : undefined,
+      is_paid: false,
       items: cart.map((item) => ({
         menu_item_id: item.id,
         name: getItemName(item),
         quantity: item.quantity,
         selected_price: item.selectedPrice,
-        price_type: "standard" as const,
+        price_type: (item.selectedProtein
+          ? (['shrimp', 'squid', 'seafood'].includes(item.selectedProtein)
+            ? 'seafood'
+            : 'chicken_pork')
+          : 'standard') as 'standard' | 'seafood' | 'chicken_pork',
         selected_size: item.selectedProtein ? { name: item.selectedProtein, price: item.selectedPrice } : undefined,
         selected_addons: item.selectedAddons,
         item_total: item.itemTotal,

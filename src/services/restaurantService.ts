@@ -44,6 +44,62 @@ export const subscribeToOrders = (
   return subscription;
 };
 
+// Subscribe to unpaid orders for a specific table
+export const subscribeToTableOrders = (
+  restaurantId: string,
+  tableNumber: string,
+  callback: (orders: Order[]) => void
+) => {
+  const fetchOrders = async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("restaurant_id", restaurantId)
+      .eq("table_number", tableNumber)
+      .eq("is_paid", false)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      callback(data);
+    }
+  };
+
+  fetchOrders();
+
+  const subscription = supabase
+    .channel(`restaurant-table-orders-${restaurantId}-${tableNumber}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "orders",
+        filter: `restaurant_id=eq.${restaurantId}`,
+      },
+      () => {
+        fetchOrders();
+      }
+    )
+    .subscribe();
+
+  return subscription;
+};
+
+// Mark all orders for a table as paid
+export const markTablePaid = async (
+  restaurantId: string,
+  tableNumber: string
+) => {
+  const { error } = await supabase
+    .from("orders")
+    .update({ is_paid: true, payment_status: "paid" })
+    .eq("restaurant_id", restaurantId)
+    .eq("table_number", tableNumber)
+    .eq("is_paid", false);
+
+  return !error;
+};
+
 // Update order status
 export const updateOrderStatus = async (
   orderId: string,
