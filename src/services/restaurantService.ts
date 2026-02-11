@@ -107,9 +107,10 @@ export const updateOrderStatus = async (
   paymentData?: {
     paymentMethod?: string;
     transactionId?: string;
-  }
+  },
+  extraUpdates?: Record<string, any>
 ) => {
-  const updateData: any = { status };
+  const updateData: any = { status, ...(extraUpdates || {}) };
 
   if (paymentData) {
     updateData.payment_method = paymentData.paymentMethod;
@@ -119,6 +120,16 @@ export const updateOrderStatus = async (
   const { error } = await supabase
     .from("orders")
     .update(updateData)
+    .eq("id", orderId);
+
+  return !error;
+};
+
+// Delete order
+export const deleteOrder = async (orderId: string) => {
+  const { error } = await supabase
+    .from("orders")
+    .delete()
     .eq("id", orderId);
 
   return !error;

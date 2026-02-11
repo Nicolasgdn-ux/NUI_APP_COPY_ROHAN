@@ -20,6 +20,7 @@ import {
 import {
   subscribeToOrders,
   updateOrderStatus,
+  deleteOrder,
 } from "../../services/restaurantService";
 import type { Order } from "../../config/supabase";
 import { formatDateTime, formatCurrency, playSound } from "../../utils/helpers";
@@ -28,7 +29,6 @@ const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("pending");
   const prevOrderCountRef = useRef(0);
@@ -59,7 +59,11 @@ const Orders: React.FC = () => {
   }, []);
 
   const filteredOrders = orders
-    .filter((order) => order.status === statusFilter)
+    .filter((order) =>
+      statusFilter === "pending"
+        ? order.status === "pending" || order.status === "accepted"
+        : order.status === statusFilter
+    )
     .sort((a, b) => {
       // Oldest first (FIFO)
       return (
@@ -67,42 +71,48 @@ const Orders: React.FC = () => {
       );
     });
 
-  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
-    const success = await updateOrderStatus(orderId, newStatus);
+  const handleStatusUpdate = async (
+    orderId: string,
+    newStatus: string,
+    extraUpdates?: Record<string, any>
+  ) => {
+    const success = await updateOrderStatus(orderId, newStatus, undefined, extraUpdates);
     if (!success) {
       alert("Failed to update order status");
     }
   };
 
-  const handleViewDetails = (order: Order) => {
-    setSelectedOrder(order);
-    setShowDetailsModal(true);
-  };
-
   const getStatusBadge = (status: string) => {
+    const normalizedStatus = status === "accepted" ? "pending" : status;
     const variants: Record<string, any> = {
       pending: "warning",
-      accepted: "accent-secondary",
       completed: "success",
       cancelled: "neutral",
       rejected: "error",
     };
-    return <Badge variant={variants[status] || "neutral"}>{status}</Badge>;
+    return (
+      <Badge variant={variants[normalizedStatus] || "neutral"}>
+        {normalizedStatus}
+      </Badge>
+    );
   };
 
   const getStatusIcon = (status: string) => {
+    const normalizedStatus = status === "accepted" ? "pending" : status;
     switch (status) {
       case "pending":
         return <Clock className="w-5 h-5 text-warning" />;
-      case "accepted":
-        return <Package className="w-5 h-5 text-accent-secondary" />;
       case "completed":
         return <CheckCircle className="w-5 h-5 text-success" />;
       case "cancelled":
       case "rejected":
         return <XCircle className="w-5 h-5 text-error" />;
       default:
-        return <Clock className="w-5 h-5 text-text-secondary" />;
+        return normalizedStatus === "pending" ? (
+          <Clock className="w-5 h-5 text-warning" />
+        ) : (
+          <Clock className="w-5 h-5 text-text-secondary" />
+        );
     }
   };
 
@@ -111,6 +121,13 @@ const Orders: React.FC = () => {
   }
 
   const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const pendingItems = filteredOrders.flatMap((order) =>
+    (order.items || []).map((item: any, index: number) => ({
+      order,
+      item,
+      index,
+    }))
+  );
 
   return (
     <div className="space-y-6">
@@ -137,13 +154,13 @@ const Orders: React.FC = () => {
 
       {/* Status Filter */}
       <div className="flex flex-wrap gap-2">
-        {["pending", "accepted", "completed", "cancelled"].map((status) => (
+        {["pending", "completed", "cancelled"].map((status) => (
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
-                ? "bg-accent text-white"
-                : "bg-bg-subtle text-text-secondary hover:bg-border"
+              ? "bg-accent text-white"
+              : "bg-bg-subtle text-text-secondary hover:bg-border"
               }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -165,121 +182,212 @@ const Orders: React.FC = () => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {filteredOrders.map((order) => (
-            <Card
-              key={order.id}
-              className={`hover:shadow-lg transition-shadow ${order.status === "pending" ? "border-l-4 border-l-warning" : ""
-                }`}
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                {/* Order Info */}
-                <div className="flex-1 space-y-3">
-                  {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      {getStatusIcon(order.status)}
-                      <div>
-                        <h3 className="text-lg font-bold text-text">
-                          Order #{order.order_number}
-                        </h3>
-                        <p className="text-sm text-text-secondary">
-                          {formatDateTime(order.created_at)}
-                        </p>
+          {statusFilter === "pending"
+            ? pendingItems.map(({ order, item, index }) => (
+              <Card
+                key={`${order.id}-${index}`}
+                className="hover:shadow-lg transition-shadow border-l-4 border-l-warning"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        {getStatusIcon(order.status)}
+                        <div>
+                          <h3 className="text-lg font-bold text-text">
+                            Order #{order.order_number}
+                          </h3>
+                          <p className="text-sm text-text-secondary">
+                            {formatDateTime(order.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {order.is_paid && <Badge variant="success">Paid</Badge>}
+                        {getStatusBadge(order.status)}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {order.is_paid && (
-                        <Badge variant="success">Paid</Badge>
+
+                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center space-x-2 text-text-secondary">
+                        <Package className="w-4 h-4" />
+                        <span>
+                          {order.order_type} •{" "}
+                          {order.table_number && `Table ${order.table_number}`}
+                          {!order.table_number && "Takeaway"}
+                        </span>
+                      </div>
+                      {order.customer_phone && (
+                        <div className="flex items-center space-x-2 text-text-secondary">
+                          <Phone className="w-4 h-4" />
+                          <a
+                            href={`tel:${order.customer_phone}`}
+                            className="text-accent hover:underline"
+                          >
+                            {order.customer_phone}
+                          </a>
+                        </div>
                       )}
-                      {getStatusBadge(order.status)}
-                    </div>
-                  </div>
-
-                  {/* Details */}
-                  <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                    <div className="flex items-center space-x-2 text-text-secondary">
-                      <Package className="w-4 h-4" />
-                      <span>
-                        {order.order_type} •{" "}
-                        {order.table_number && `Table ${order.table_number}`}
-                        {!order.table_number && "Takeaway"}
-                      </span>
-                    </div>
-                    {order.customer_phone && (
+                      {order.customer_name && (
+                        <div className="flex items-center space-x-2 text-text-secondary">
+                          <User className="w-4 h-4" />
+                          <span>{order.customer_name}</span>
+                        </div>
+                      )}
                       <div className="flex items-center space-x-2 text-text-secondary">
-                        <Phone className="w-4 h-4" />
-                        <a
-                          href={`tel:${order.customer_phone}`}
-                          className="text-accent hover:underline"
-                        >
-                          {order.customer_phone}
-                        </a>
+                        <span className="font-semibold text-text">1 item</span>
+                        <span>•</span>
+                        <span className="font-bold text-text text-lg">
+                          {formatCurrency(item.item_total || item.subtotal || 0)}
+                        </span>
                       </div>
-                    )}
-                    {order.customer_name && (
-                      <div className="flex items-center space-x-2 text-text-secondary">
-                        <User className="w-4 h-4" />
-                        <span>{order.customer_name}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center space-x-2 text-text-secondary">
-                      <span className="font-semibold text-text">
-                        {order.items?.length || 0} items
-                      </span>
-                      <span>•</span>
-                      <span className="font-bold text-text text-lg">
-                        {formatCurrency(order.total)}
-                      </span>
                     </div>
-                  </div>
 
-                  {/* Items summary */}
-                  {order.items && order.items.length > 0 && (
-                    <div className="text-sm text-text-secondary">
-                      <span className="font-medium text-text">Items:</span>{" "}
-                      {order.items
-                        .slice(0, 3)
-                        .map((item: any) => `${item.quantity}x ${item.name}`)
-                        .join(" • ")}
-                      {order.items.length > 3 && " • ..."}
-                    </div>
-                  )}
-
-                  {/* Customer Notes */}
-                  {order.customer_notes && (
-                    <div className="flex items-start space-x-2 text-sm bg-bg-subtle rounded-lg p-3">
-                      <MessageSquare className="w-4 h-4 text-accent-secondary mt-0.5" />
-                      <div>
-                        <p className="font-medium text-text">Customer Notes:</p>
+                    <div className="text-sm">
+                      <p className="font-medium text-text">
+                        {item.quantity}x {item.name}
+                      </p>
+                      {item.selected_size?.name && (
+                        <p className="text-text-secondary">Protein: {item.selected_size.name}</p>
+                      )}
+                      {item.selected_addons && item.selected_addons.length > 0 && (
                         <p className="text-text-secondary">
-                          {order.customer_notes}
+                          Add-ons: {item.selected_addons.map((a: any) => a.name).join(", ")}
                         </p>
+                      )}
+                      {item.special_instructions && (
+                        <p className="text-text-secondary">Notes: {item.special_instructions}</p>
+                      )}
+                    </div>
+
+                    {order.customer_notes && (
+                      <div className="flex items-start space-x-2 text-sm bg-bg-subtle rounded-lg p-3">
+                        <MessageSquare className="w-4 h-4 text-accent-secondary mt-0.5" />
+                        <div>
+                          <p className="font-medium text-text">Customer Notes:</p>
+                          <p className="text-text-secondary">
+                            {order.customer_notes}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex lg:flex-col gap-2 lg:min-w-[160px]">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      fullWidth
+                      onClick={() => handleStatusUpdate(order.id, "completed")}
+                    >
+                      Finished
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      fullWidth
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowRejectModal(true);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))
+            : filteredOrders.map((order) => (
+              <Card
+                key={order.id}
+                className={`hover:shadow-lg transition-shadow ${order.status === "pending" ? "border-l-4 border-l-warning" : ""
+                  }`}
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        {getStatusIcon(order.status)}
+                        <div>
+                          <h3 className="text-lg font-bold text-text">
+                            Order #{order.order_number}
+                          </h3>
+                          <p className="text-sm text-text-secondary">
+                            {formatDateTime(order.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {order.is_paid && (
+                          <Badge variant="success">Paid</Badge>
+                        )}
+                        {getStatusBadge(order.status)}
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Actions */}
-                <div className="flex lg:flex-col gap-2 lg:min-w-[160px]">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    fullWidth
-                    onClick={() => handleViewDetails(order)}
-                  >
-                    View Details
-                  </Button>
+                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center space-x-2 text-text-secondary">
+                        <Package className="w-4 h-4" />
+                        <span>
+                          {order.order_type} •{" "}
+                          {order.table_number && `Table ${order.table_number}`}
+                          {!order.table_number && "Takeaway"}
+                        </span>
+                      </div>
+                      {order.customer_phone && (
+                        <div className="flex items-center space-x-2 text-text-secondary">
+                          <Phone className="w-4 h-4" />
+                          <a
+                            href={`tel:${order.customer_phone}`}
+                            className="text-accent hover:underline"
+                          >
+                            {order.customer_phone}
+                          </a>
+                        </div>
+                      )}
+                      {order.customer_name && (
+                        <div className="flex items-center space-x-2 text-text-secondary">
+                          <User className="w-4 h-4" />
+                          <span>{order.customer_name}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center space-x-2 text-text-secondary">
+                        <span className="font-semibold text-text">
+                          {order.items?.length || 0} items
+                        </span>
+                        <span>•</span>
+                        <span className="font-bold text-text text-lg">
+                          {formatCurrency(order.total)}
+                        </span>
+                      </div>
+                    </div>
 
-                  {order.status === "pending" && (
-                    <>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        fullWidth
-                        onClick={() => handleStatusUpdate(order.id, "accepted")}
-                      >
-                        Accept
-                      </Button>
+                    {order.items && order.items.length > 0 && (
+                      <div className="text-sm text-text-secondary">
+                        <span className="font-medium text-text">Items:</span>{" "}
+                        {order.items
+                          .slice(0, 3)
+                          .map((item: any) => `${item.quantity}x ${item.name}`)
+                          .join(" • ")}
+                        {order.items.length > 3 && " • ..."}
+                      </div>
+                    )}
+
+                    {order.customer_notes && (
+                      <div className="flex items-start space-x-2 text-sm bg-bg-subtle rounded-lg p-3">
+                        <MessageSquare className="w-4 h-4 text-accent-secondary mt-0.5" />
+                        <div>
+                          <p className="font-medium text-text">Customer Notes:</p>
+                          <p className="text-text-secondary">
+                            {order.customer_notes}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex lg:flex-col gap-2 lg:min-w-[160px]">
+                    {order.status === "completed" && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -291,50 +399,18 @@ const Orders: React.FC = () => {
                       >
                         Cancel
                       </Button>
-                    </>
-                  )}
-
-                  {order.status === "accepted" && (
-                    <>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        fullWidth
-                        onClick={() =>
-                          handleStatusUpdate(order.id, "completed")
-                        }
-                      >
-                        Mark Complete
+                    )}
+                    {order.status === "cancelled" && (
+                      <Button variant="outline" size="sm" fullWidth disabled>
+                        Cancelled
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        fullWidth
-                        onClick={() => {
-                          setSelectedOrder(order);
-                          setShowRejectModal(true);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ))}
         </div>
       )}
-
-      {/* Order Details Modal */}
-      <OrderDetailsModal
-        isOpen={showDetailsModal}
-        order={selectedOrder}
-        onClose={() => {
-          setShowDetailsModal(false);
-          setSelectedOrder(null);
-        }}
-      />
 
       {/* Reject Modal */}
       <RejectOrderModal
@@ -344,164 +420,14 @@ const Orders: React.FC = () => {
           setShowRejectModal(false);
           setSelectedOrder(null);
         }}
-        onReject={handleStatusUpdate}
+        onReject={async (orderId) => {
+          const success = await deleteOrder(orderId);
+          if (!success) {
+            alert("Failed to delete order");
+          }
+        }}
       />
     </div>
-  );
-};
-
-// Order Details Modal Component
-interface OrderDetailsModalProps {
-  isOpen: boolean;
-  order: Order | null;
-  onClose: () => void;
-}
-
-const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
-  isOpen,
-  order,
-  onClose,
-}) => {
-  if (!order) return null;
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`Order #${order.order_number}`}
-      size="lg"
-    >
-      <div className="space-y-6">
-        {/* Status */}
-        <div className="flex items-center justify-between p-4 bg-bg-subtle rounded-lg">
-          <span className="font-medium text-text">Status</span>
-          <Badge
-            variant={
-              order.status === "completed"
-                ? "success"
-                : order.status === "pending"
-                  ? "warning"
-                  : "neutral"
-            }
-          >
-            {order.status}
-          </Badge>
-        </div>
-
-        {/* Customer Info */}
-        <div>
-          <h4 className="font-semibold text-text mb-3">Customer Information</h4>
-          <div className="space-y-2 text-sm">
-            {order.customer_name && (
-              <p className="text-text-secondary">
-                <strong className="text-text">Name:</strong>{" "}
-                {order.customer_name}
-              </p>
-            )}
-            {order.customer_phone && (
-              <p className="text-text-secondary">
-                <strong className="text-text">Phone:</strong>{" "}
-                {order.customer_phone}
-              </p>
-            )}
-            <p className="text-text-secondary">
-              <strong className="text-text">Order Type:</strong>{" "}
-              {order.order_type}
-            </p>
-            {order.table_number && (
-              <p className="text-text-secondary">
-                <strong className="text-text">Table:</strong>{" "}
-                {order.table_number}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Order Items */}
-        <div>
-          <h4 className="font-semibold text-text mb-3">Order Items</h4>
-          <div className="space-y-3">
-            {order.items?.map((item: any, index: number) => (
-              <div
-                key={index}
-                className="flex items-start justify-between p-3 bg-bg-subtle rounded-lg"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-text">
-                    {item.quantity}x {item.name}
-                  </p>
-                  {item.selected_size?.name && (
-                    <p className="text-sm text-text-secondary">
-                      Protein: {item.selected_size.name}
-                    </p>
-                  )}
-                  {item.selected_addons && item.selected_addons.length > 0 && (
-                    <p className="text-sm text-text-secondary">
-                      Add-ons: {item.selected_addons.map((a: any) => a.name).join(", ")}
-                    </p>
-                  )}
-                  {item.special_instructions && (
-                    <p className="text-sm text-text-secondary">
-                      Notes: {item.special_instructions}
-                    </p>
-                  )}
-                </div>
-                <p className="font-semibold text-text">
-                  {formatCurrency(item.item_total || item.subtotal || 0)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Pricing */}
-        <div className="border-t border-border pt-4 space-y-2">
-          <div className="flex justify-between text-text-secondary">
-            <span>Subtotal</span>
-            <span>{formatCurrency(order.subtotal)}</span>
-          </div>
-          {order.discount && order.discount > 0 && (
-            <div className="flex justify-between text-success">
-              <span>Discount</span>
-              <span>-{formatCurrency(order.discount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-lg font-bold text-text pt-2 border-t border-border">
-            <span>Total</span>
-            <span>{formatCurrency(order.total)}</span>
-          </div>
-        </div>
-
-        {/* Notes */}
-        {order.customer_notes && (
-          <div className="bg-accent-secondary/10 border border-accent-secondary/20 rounded-lg p-4">
-            <h4 className="font-semibold text-text mb-2">Customer Notes</h4>
-            <p className="text-text-secondary text-sm">
-              {order.customer_notes}
-            </p>
-          </div>
-        )}
-
-        {/* Payment Info */}
-        {order.payment_method && (
-          <div>
-            <h4 className="font-semibold text-text mb-2">Payment</h4>
-            <p className="text-text-secondary text-sm">
-              Method: {order.payment_method}
-            </p>
-            {order.payment_transaction_id && (
-              <p className="text-text-secondary text-sm">
-                Transaction ID: {order.payment_transaction_id}
-              </p>
-            )}
-          </div>
-        )}
-
-        <Button onClick={onClose} fullWidth>
-          Close
-        </Button>
-      </div>
-    </Modal>
   );
 };
 
@@ -510,7 +436,7 @@ interface RejectOrderModalProps {
   isOpen: boolean;
   order: Order | null;
   onClose: () => void;
-  onReject: (orderId: string, status: string, notes?: string) => void;
+  onReject: (orderId: string) => void;
 }
 
 const RejectOrderModal: React.FC<RejectOrderModalProps> = ({
@@ -523,7 +449,7 @@ const RejectOrderModal: React.FC<RejectOrderModalProps> = ({
 
   const handleCancel = () => {
     if (!order) return;
-    onReject(order.id, "cancelled", reason);
+    onReject(order.id);
     onClose();
     setReason("");
   };
