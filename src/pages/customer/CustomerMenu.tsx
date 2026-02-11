@@ -109,6 +109,14 @@ const CustomerMenu: React.FC = () => {
     setRestaurant(data);
   };
 
+  // Get item name in selected language - MUST be before filteredItems usage
+  const getItemName = (item: MenuItem): string => {
+    if (typeof item.name === 'object') {
+      return item.name[language] || item.name.en || 'Item';
+    }
+    return item.name || 'Item';
+  };
+
   const categories = [
     "all",
     ...new Set(menuItems.map((item) => item.category).filter(Boolean)),
@@ -226,14 +234,6 @@ const CustomerMenu: React.FC = () => {
     if (index >= 0) {
       updateQuantity(index, -1);
     }
-  };
-
-  // Get item name in selected language
-  const getItemName = (item: MenuItem): string => {
-    if (typeof item.name === 'object') {
-      return item.name[language] || item.name.en || 'Item';
-    }
-    return item.name || 'Item';
   };
 
   return (
@@ -501,13 +501,6 @@ const CartModal: React.FC<CartModalProps> = ({
     0
   );
 
-  const getItemName = (item: MenuItem): string => {
-    if (typeof item.name === 'object') {
-      return item.name[language] || item.name.en || 'Item';
-    }
-    return item.name || 'Item';
-  };
-
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Your Cart" size="lg">
       <div className="space-y-6">
@@ -610,14 +603,6 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
   }, [item]);
 
   if (!item) return null;
-
-  // Get item name/description in selected language
-  const getItemName = (item: MenuItem): string => {
-    if (typeof item.name === 'object') {
-      return item.name[language] || item.name.en || 'Item';
-    }
-    return item.name || 'Item';
-  };
 
   const getItemDescription = (item: MenuItem): string | undefined => {
     if (!item.description) return undefined;
@@ -751,14 +736,6 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-
-  // Get item name/description in selected language
-  const getItemName = (item: MenuItem): string => {
-    if (typeof item.name === 'object') {
-      return item.name.en || item.name.th || Object.values(item.name)[0] as string || 'Item';
-    }
-    return item.name || 'Item';
-  };
 
   const subtotal = cart.reduce(
     (sum, item) => sum + item.itemTotal * item.quantity,
