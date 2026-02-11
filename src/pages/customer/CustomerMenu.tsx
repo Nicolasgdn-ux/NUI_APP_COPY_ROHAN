@@ -123,6 +123,10 @@ const CustomerMenu: React.FC = () => {
     return matchesSearch && matchesCategory && item.is_available;
   });
 
+  console.log('menuItems:', menuItems);
+  console.log('filteredItems:', filteredItems);
+  console.log('restaurant:', restaurant);
+
   const addToCart = (
     item: MenuItem,
     selectedSize?: any,
