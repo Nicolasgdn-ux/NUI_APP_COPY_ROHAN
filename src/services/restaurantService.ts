@@ -70,14 +70,12 @@ export const updateOrderStatus = async (
 
 // Normalize MenuItem data from Supabase (prices may be strings, ensure they're numbers)
 const normalizeMenuItems = (items: any[]): MenuItem[] => {
-  const normalized = items.map(item => ({
+  return items.map(item => ({
     ...item,
     price_standard: item.price_standard ? parseFloat(item.price_standard) : undefined,
     price_seafood: item.price_seafood ? parseFloat(item.price_seafood) : undefined,
     price_chicken_pork: item.price_chicken_pork ? parseFloat(item.price_chicken_pork) : undefined,
   }));
-  console.log('Normalized items:', normalized);
-  return normalized;
 };
 
 // Subscribe to menu items with real-time updates
