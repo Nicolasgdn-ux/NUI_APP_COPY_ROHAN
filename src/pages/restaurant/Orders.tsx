@@ -72,27 +72,14 @@ const Orders: React.FC = () => {
     });
 
 
-  const handleFinishItem = async (order: Order, itemIndex: number) => {
-    const items = Array.isArray(order.items) ? [...order.items] : [];
-    items.splice(itemIndex, 1);
-
-    const subtotal = items.reduce((sum: number, item: any) => {
-      const lineTotal = (item.item_total || 0) * (item.quantity || 1);
-      return sum + lineTotal;
-    }, 0);
-
-    const newStatus: Order["status"] = items.length === 0 ? "completed" : order.status;
-
+  const handleFinishOrder = async (order: Order) => {
     const updates: Partial<Order> = {
-      items,
-      subtotal,
-      total: subtotal,
-      status: newStatus,
+      status: "completed",
     };
 
     const result = await updateOrderFields(order.id, updates);
     if (!result.success) {
-      alert("Failed to mark item as finished");
+      alert("Failed to mark order as finished");
       return;
     }
 
@@ -142,13 +129,6 @@ const Orders: React.FC = () => {
   const pendingCount = orders.filter(
     (o) => o.status === "pending" || o.status === "accepted"
   ).length;
-  const pendingItems = filteredOrders.flatMap((order) =>
-    (order.items || []).map((item: any, index: number) => ({
-      order,
-      item,
-      index,
-    }))
-  );
 
   return (
     <div className="space-y-6">
@@ -203,11 +183,13 @@ const Orders: React.FC = () => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {statusFilter === "pending"
-            ? pendingItems.map(({ order, item, index }) => (
+          {filteredOrders.map((order) => {
+            const item = order.items?.[0]; // Since we now create one order per item
+            return (
               <Card
-                key={`${order.id}-${index}`}
-                className="hover:shadow-lg transition-shadow border-l-4 border-l-warning"
+                key={order.id}
+                className={`hover:shadow-lg transition-shadow ${order.status === "pending" ? "border-l-4 border-l-warning" : ""
+                  }`}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex-1 space-y-3">
@@ -259,138 +241,27 @@ const Orders: React.FC = () => {
                         <span className="font-semibold text-text">1 item</span>
                         <span>•</span>
                         <span className="font-bold text-text text-lg">
-                          {formatCurrency(item.item_total || item.subtotal || 0)}
+                          {formatCurrency(order.total || 0)}
                         </span>
                       </div>
                     </div>
 
-                    <div className="text-sm">
-                      <p className="font-medium text-text">
-                        {item.quantity}x {item.name}
-                      </p>
-                      {item.selected_size?.name && (
-                        <p className="text-text-secondary">Protein: {item.selected_size.name}</p>
-                      )}
-                      {item.selected_addons && item.selected_addons.length > 0 && (
-                        <p className="text-text-secondary">
-                          Add-ons: {item.selected_addons.map((a: any) => a.name).join(", ")}
+                    {item && (
+                      <div className="text-sm">
+                        <p className="font-medium text-text">
+                          {item.quantity}x {item.name}
                         </p>
-                      )}
-                      {item.special_instructions && (
-                        <p className="text-text-secondary">Notes: {item.special_instructions}</p>
-                      )}
-                    </div>
-
-                    {order.customer_notes && (
-                      <div className="flex items-start space-x-2 text-sm bg-bg-subtle rounded-lg p-3">
-                        <MessageSquare className="w-4 h-4 text-accent-secondary mt-0.5" />
-                        <div>
-                          <p className="font-medium text-text">Customer Notes:</p>
-                          <p className="text-text-secondary">
-                            {order.customer_notes}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex lg:flex-col gap-2 lg:min-w-[160px]">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      fullWidth
-                      onClick={() => handleFinishItem(order, index)}
-                    >
-                      Finished
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      fullWidth
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setShowRejectModal(true);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))
-            : filteredOrders.map((order) => (
-              <Card
-                key={order.id}
-                className={`hover:shadow-lg transition-shadow ${order.status === "pending" ? "border-l-4 border-l-warning" : ""
-                  }`}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        {getStatusIcon(order.status)}
-                        <div>
-                          <h3 className="text-lg font-bold text-text">
-                            Order #{order.order_number}
-                          </h3>
-                          <p className="text-sm text-text-secondary">
-                            {formatDateTime(order.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {order.is_paid && (
-                          <Badge variant="success">Paid</Badge>
+                        {item.selected_size?.name && (
+                          <p className="text-text-secondary">Protein: {item.selected_size.name}</p>
                         )}
-                        {getStatusBadge(order.status)}
-                      </div>
-                    </div>
-
-                    <div className="grid sm:grid-cols-2 gap-2 text-sm">
-                      <div className="flex items-center space-x-2 text-text-secondary">
-                        <Package className="w-4 h-4" />
-                        <span>
-                          {order.order_type} •{" "}
-                          {order.table_number && `Table ${order.table_number}`}
-                          {!order.table_number && "Takeaway"}
-                        </span>
-                      </div>
-                      {order.customer_phone && (
-                        <div className="flex items-center space-x-2 text-text-secondary">
-                          <Phone className="w-4 h-4" />
-                          <a
-                            href={`tel:${order.customer_phone}`}
-                            className="text-accent hover:underline"
-                          >
-                            {order.customer_phone}
-                          </a>
-                        </div>
-                      )}
-                      {order.customer_name && (
-                        <div className="flex items-center space-x-2 text-text-secondary">
-                          <User className="w-4 h-4" />
-                          <span>{order.customer_name}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center space-x-2 text-text-secondary">
-                        <span className="font-semibold text-text">
-                          {order.items?.length || 0} items
-                        </span>
-                        <span>•</span>
-                        <span className="font-bold text-text text-lg">
-                          {formatCurrency(order.total)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {order.items && order.items.length > 0 && (
-                      <div className="text-sm text-text-secondary">
-                        <span className="font-medium text-text">Items:</span>{" "}
-                        {order.items
-                          .slice(0, 3)
-                          .map((item: any) => `${item.quantity}x ${item.name}`)
-                          .join(" • ")}
-                        {order.items.length > 3 && " • ..."}
+                        {item.selected_addons && item.selected_addons.length > 0 && (
+                          <p className="text-text-secondary">
+                            Add-ons: {item.selected_addons.map((a: any) => a.name).join(", ")}
+                          </p>
+                        )}
+                        {item.special_instructions && (
+                          <p className="text-text-secondary">Notes: {item.special_instructions}</p>
+                        )}
                       </div>
                     )}
 
@@ -407,8 +278,16 @@ const Orders: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="flex lg:flex-col gap-2 lg:min-w-[160px]">
-                    {order.status === "completed" && (
+                  {statusFilter === "pending" && (
+                    <div className="flex lg:flex-col gap-2 lg:min-w-[160px]">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        fullWidth
+                        onClick={() => handleFinishOrder(order)}
+                      >
+                        Finished
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -420,16 +299,12 @@ const Orders: React.FC = () => {
                       >
                         Cancel
                       </Button>
-                    )}
-                    {order.status === "cancelled" && (
-                      <Button variant="outline" size="sm" fullWidth disabled>
-                        Cancelled
-                      </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </Card>
-            ))}
+            );
+          })}
         </div>
       )}
 

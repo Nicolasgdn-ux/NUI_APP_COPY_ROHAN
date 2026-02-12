@@ -931,8 +931,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('shrimp')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'shrimp'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -945,8 +945,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('squid')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'squid'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -959,8 +959,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('seafood')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'seafood'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -977,8 +977,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('chicken')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'chicken'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -991,8 +991,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                   <button
                     onClick={() => setSelectedProtein('pork')}
                     className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${selectedProtein === 'pork'
-                        ? 'border-accent bg-accent/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-accent bg-accent/10'
+                      : 'border-gray-200 hover:border-gray-300'
                       }`}
                   >
                     <span className="flex items-center gap-2">
@@ -1028,8 +1028,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
                       key={level}
                       onClick={() => setSpicyLevel(level)}
                       className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-colors ${spicyLevel === level
-                          ? 'border-accent bg-accent/10'
-                          : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-accent bg-accent/10'
+                        : 'border-gray-200 hover:border-gray-300'
                         }`}
                     >
                       <span>{labels[level].icon}</span>
@@ -1045,8 +1045,8 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
               <button
                 onClick={() => setBiggerPortion(!biggerPortion)}
                 className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-colors ${biggerPortion
-                    ? 'border-accent bg-accent/10'
-                    : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-accent bg-accent/10'
+                  : 'border-gray-200 hover:border-gray-300'
                   }`}
               >
                 <span className="flex items-center gap-2">
@@ -1160,45 +1160,54 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     setLoading(true);
 
-    const orderData = {
-      restaurant_id: restaurantId,
-      order_type: (isTableOrder ? "qr" : "counter") as
-        | "qr"
-        | "counter",
-      table_number: isTableOrder ? tableId : undefined,
-      is_paid: false,
-      items: cart.map((item) => ({
-        menu_item_id: item.id,
-        name: getItemName(item),
-        quantity: item.quantity,
-        selected_price: item.selectedPrice,
-        price_type: (item.selectedProtein
-          ? (['shrimp', 'squid', 'seafood'].includes(item.selectedProtein)
-            ? 'seafood'
-            : 'chicken_pork')
-          : 'standard') as 'standard' | 'seafood' | 'chicken_pork',
-        selected_size: item.selectedProtein ? { name: item.selectedProtein, price: item.selectedPrice } : undefined,
-        selected_addons: item.selectedAddons,
-        item_total: item.itemTotal,
-        special_instructions: item.spicyLevel && item.spicyLevel !== 'none' ? `Spicy: ${item.spicyLevel}${item.biggerPortion ? ', Bigger portion' : ''}` : (item.biggerPortion ? 'Bigger portion' : undefined),
-      })),
-      subtotal,
-      tax: 0,
-      total,
-      customer_notes: notes,
-    };
+    // Create one order per cart item
+    let hasError = false;
+    for (const item of cart) {
+      const itemSubtotal = item.itemTotal * item.quantity;
+      const orderData = {
+        restaurant_id: restaurantId,
+        order_type: (isTableOrder ? "qr" : "counter") as
+          | "qr"
+          | "counter",
+        table_number: isTableOrder ? tableId : undefined,
+        is_paid: false,
+        items: [{
+          menu_item_id: item.id,
+          name: getItemName(item),
+          quantity: item.quantity,
+          selected_price: item.selectedPrice,
+          price_type: (item.selectedProtein
+            ? (['shrimp', 'squid', 'seafood'].includes(item.selectedProtein)
+              ? 'seafood'
+              : 'chicken_pork')
+            : 'standard') as 'standard' | 'seafood' | 'chicken_pork',
+          selected_size: item.selectedProtein ? { name: item.selectedProtein, price: item.selectedPrice } : undefined,
+          selected_addons: item.selectedAddons,
+          item_total: item.itemTotal,
+          special_instructions: item.spicyLevel && item.spicyLevel !== 'none' ? `Spicy: ${item.spicyLevel}${item.biggerPortion ? ', Bigger portion' : ''}` : (item.biggerPortion ? 'Bigger portion' : undefined),
+        }],
+        subtotal: itemSubtotal,
+        tax: 0,
+        total: itemSubtotal,
+        customer_notes: notes,
+      };
 
-    const { error: orderError } = await createOrder(orderData);
+      const { error: orderError } = await createOrder(orderData);
+      if (orderError) {
+        hasError = true;
+        setError(orderError?.message || "Failed to place order");
+        break;
+      }
+    }
+
     setLoading(false);
 
-    if (!orderError) {
+    if (!hasError) {
       setSuccess(true);
       setTimeout(() => {
         onSuccess();
         resetForm();
       }, 2000);
-    } else {
-      setError(orderError?.message || "Failed to place order");
     }
   };
 
