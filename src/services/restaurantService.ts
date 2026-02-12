@@ -257,19 +257,27 @@ export const createOrder = async (order: Partial<Order>) => {
 // Get restaurant stats
 export const getRestaurantStats = async (restaurantId: string) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's date in Bangkok timezone (UTC+7)
+    const now = new Date();
+    const bangkokOffset = 7 * 60; // UTC+7 in minutes
+    const localOffset = now.getTimezoneOffset(); // Local offset in minutes
+    const bangkokTime = new Date(now.getTime() + (bangkokOffset + localOffset) * 60000);
+
+    // Set to start of day in Bangkok
+    const todayBangkok = new Date(bangkokTime);
+    todayBangkok.setHours(0, 0, 0, 0);
 
     const [
       { data: todayOrders },
       { data: pendingOrders },
       { count: totalOrders },
+      { count: totalMenuItems },
     ] = await Promise.all([
       supabase
         .from("orders")
         .select("total, status")
         .eq("restaurant_id", restaurantId)
-        .gte("created_at", today.toISOString()),
+        .gte("created_at", todayBangkok.toISOString()),
       supabase
         .from("orders")
         .select("*")
@@ -279,28 +287,36 @@ export const getRestaurantStats = async (restaurantId: string) => {
         .from("orders")
         .select("*", { count: "exact", head: true })
         .eq("restaurant_id", restaurantId),
+      supabase
+        .from("menu_items")
+        .select("*", { count: "exact", head: true })
+        .eq("restaurant_id", restaurantId),
     ]);
 
+    const todayOrdersCount = todayOrders?.length || 0;
     const completedToday =
       todayOrders?.filter((o) => o.status === "completed").length || 0;
-    const revenueToday =
+    const todayRevenue =
       todayOrders
-        ?.filter((o) => o.status === "completed")
-        .reduce((sum, o) => sum + (o.total || 0), 0) || 0;
+        ?.reduce((sum, o) => sum + (parseFloat(o.total as any) || 0), 0) || 0;
 
     return {
       pendingOrders: pendingOrders?.length || 0,
+      todayOrders: todayOrdersCount,
       completedToday,
-      revenueToday,
+      todayRevenue,
       totalOrders: totalOrders || 0,
+      totalMenuItems: totalMenuItems || 0,
     };
   } catch (error) {
     console.error("Error fetching restaurant stats:", error);
     return {
       pendingOrders: 0,
+      todayOrders: 0,
       completedToday: 0,
-      revenueToday: 0,
+      todayRevenue: 0,
       totalOrders: 0,
+      totalMenuItems: 0,
     };
   }
 };
