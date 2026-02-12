@@ -81,11 +81,13 @@ const Orders: React.FC = () => {
       return sum + lineTotal;
     }, 0);
 
+    const newStatus: Order["status"] = items.length === 0 ? "completed" : order.status;
+
     const updates: Partial<Order> = {
       items,
       subtotal,
       total: subtotal,
-      status: items.length === 0 ? "completed" : order.status,
+      status: newStatus,
     };
 
     const result = await updateOrderFields(order.id, updates);
@@ -214,7 +216,7 @@ const Orders: React.FC = () => {
                         {getStatusIcon(order.status)}
                         <div>
                           <h3 className="text-lg font-bold text-text">
-                            Order #{order.order_number}
+                            Order Table {order.table_number || order.order_number}
                           </h3>
                           <p className="text-sm text-text-secondary">
                             {formatDateTime(order.created_at)}

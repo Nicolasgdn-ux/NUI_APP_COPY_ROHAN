@@ -100,7 +100,7 @@ const Tables: React.FC = () => {
                             </div>
 
                             <Button
-                                variant={canPay ? "primary" : "outline"}
+                                variant={canPay ? "primary" : "ghost"}
                                 size="sm"
                                 onClick={() => handlePaid(table)}
                                 disabled={!canPay}
