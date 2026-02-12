@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import {
   ShoppingCart,
@@ -8,6 +8,7 @@ import {
   Search,
   CheckCircle,
   Package,
+  AlertCircle,
 } from "lucide-react";
 import {
   Card,
@@ -41,6 +42,9 @@ const CustomerMenu: React.FC = () => {
   const tableParam = searchParams.get("table");
   const tableId = tableParam || "Takeaway";
   const isTableOrder = tableId !== "Takeaway";
+
+  // Ref for scrolling to table orders
+  const tableOrdersRef = useRef<HTMLDivElement>(null);
 
   // SessionID persistant - même personne = même sessionID (not used in orders for now)
   // const [sessionId] = useState<string>(() => {
@@ -439,33 +443,44 @@ const CustomerMenu: React.FC = () => {
 
       {/* Table Orders Summary */}
       {isTableOrder && (
-        <div className="max-w-screen-lg mx-auto px-4 py-4">
-          <Card className="p-4">
+        <div className="max-w-screen-lg mx-auto px-4 py-4" ref={tableOrdersRef}>
+          <Card className={`p-4 ${tableOrders.length > 0 ? 'border-2 border-accent bg-accent/5' : ''}`}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-text">
-                {language === 'th'
-                  ? `ออเดอร์โต๊ะ ${tableId}`
-                  : language === 'ru'
-                    ? `Заказы стола ${tableId}`
-                    : language === 'zh'
-                      ? `桌号 ${tableId} 的订单`
-                      : `Table ${tableId} Orders`}
-              </h3>
-              <span className="text-sm text-text-secondary">
-                {tableOrders.length} orders
+              <div className="flex items-center gap-2">
+                {tableOrders.length > 0 && (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-success text-white text-xs font-semibold">
+                    <CheckCircle className="w-3 h-3" />
+                    <span>{language === 'th' ? 'สั่งแล้ว' : language === 'ru' ? 'Заказано' : language === 'zh' ? '已点餐' : 'Ordered'}</span>
+                  </div>
+                )}
+                <h3 className="font-semibold text-text">
+                  {language === 'th'
+                    ? `ออเดอร์โต๊ะ ${tableId}`
+                    : language === 'ru'
+                      ? `Заказы стола ${tableId}`
+                      : language === 'zh'
+                        ? `桌号 ${tableId} 的订单`
+                        : `Table ${tableId} Orders`}
+                </h3>
+              </div>
+              <span className="text-sm font-semibold text-accent">
+                {tableOrders.length} {language === 'th' ? 'รายการ' : language === 'ru' ? 'позиций' : language === 'zh' ? '项' : 'items'}
               </span>
             </div>
 
             {tableOrders.length === 0 ? (
-              <p className="text-sm text-text-secondary">
-                {language === 'th'
-                  ? 'ยังไม่มีรายการสั่งซื้อสำหรับโต๊ะนี้'
-                  : language === 'ru'
-                    ? 'Пока нет заказов для этого стола'
-                    : language === 'zh'
-                      ? '该桌暂无订单'
-                      : 'No orders yet for this table'}
-              </p>
+              <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <AlertCircle className="w-4 h-4" />
+                <span>
+                  {language === 'th'
+                    ? 'ยังไม่มีรายการสั่งซื้อสำหรับโต๊ะนี้'
+                    : language === 'ru'
+                      ? 'Пока нет заказов для этого стола'
+                      : language === 'zh'
+                        ? '该桌暂无订单'
+                        : 'No orders yet for this table'}
+                </span>
+              </div>
             ) : (
               <div className="space-y-3">
                 {tableOrders.map((order) => (
@@ -644,6 +659,7 @@ const CustomerMenu: React.FC = () => {
       <CheckoutModal
         isOpen={showCheckout}
         cart={cart}
+        setCart={setCart}
         restaurantId={restaurant.id}
         tableId={tableId}
         isTableOrder={isTableOrder}
@@ -651,6 +667,12 @@ const CustomerMenu: React.FC = () => {
         onSuccess={() => {
           setCart([]);
           setShowCheckout(false);
+          // Scroll to table orders section after successful checkout
+          if (isTableOrder && tableOrdersRef.current) {
+            setTimeout(() => {
+              tableOrdersRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+          }
         }}
       />
 
@@ -1120,6 +1142,7 @@ const ItemCustomizationModal: React.FC<ItemCustomizationModalProps> = ({
 interface CheckoutModalProps {
   isOpen: boolean;
   cart: CartItem[];
+  setCart: (cart: CartItem[]) => void;
   restaurantId: string;
   tableId: string;
   isTableOrder: boolean;
@@ -1130,6 +1153,7 @@ interface CheckoutModalProps {
 const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   cart,
+  setCart,
   restaurantId,
   tableId,
   isTableOrder,
@@ -1212,6 +1236,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   const resetForm = () => {
+    setCart([]);
     setNotes("");
     setSuccess(false);
   };

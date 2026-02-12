@@ -68,6 +68,7 @@ export const calculateOrderTotals = (items: any[]) => {
  */
 export const formatDateTime = (dateString: string): string => {
   const date = new Date(dateString);
+  // Thailand timezone is UTC+7
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
@@ -75,6 +76,7 @@ export const formatDateTime = (dateString: string): string => {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
+    timeZone: "Asia/Bangkok",
   }).format(date);
 };
 
@@ -83,6 +85,7 @@ export const formatDate = (dateString: string): string => {
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
     month: "short",
+    timeZone: "Asia/Bangkok",
     year: "numeric",
   }).format(date);
 };
