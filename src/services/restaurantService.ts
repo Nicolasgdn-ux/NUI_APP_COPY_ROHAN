@@ -92,7 +92,7 @@ export const markTablePaid = async (
 ) => {
   const { error } = await supabase
     .from("orders")
-    .update({ is_paid: true, payment_status: "paid" })
+    .update({ is_paid: true })
     .eq("restaurant_id", restaurantId)
     .eq("table_number", tableNumber)
     .eq("is_paid", false)
