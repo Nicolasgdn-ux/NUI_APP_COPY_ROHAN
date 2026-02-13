@@ -93,6 +93,15 @@ const Menu: React.FC<MenuProps> = ({ language = 'en' }) => {
       search: 'Search by name or Thai name...',
       availability: 'Availability',
       noItems: 'No menu items found',
+      allItems: 'All Items',
+      standardVeg: 'Standard/Veg',
+      chickenPork: 'Chicken/Pork',
+      seafood: 'Seafood',
+      page: 'Page',
+      disable: 'Disable',
+      enable: 'Enable',
+      edit: 'Edit',
+      delete: 'Delete',
     },
     th: {
       menu: 'จัดการเมนู',
@@ -101,6 +110,15 @@ const Menu: React.FC<MenuProps> = ({ language = 'en' }) => {
       search: 'ค้นหาตามชื่อหรือชื่อไทย...',
       availability: 'ความพร้อมใช้งาน',
       noItems: 'ไม่พบรายการเมนู',
+      allItems: 'รายการทั้งหมด',
+      standardVeg: 'มาตรฐาน/เจ',
+      chickenPork: 'ไก่/หมู',
+      seafood: 'อาหารทะเล',
+      page: 'หน้า',
+      disable: 'ปิดใช้งาน',
+      enable: 'เปิดใช้งาน',
+      edit: 'แก้ไข',
+      delete: 'ลบ',
     }
   };
 
@@ -133,7 +151,7 @@ const Menu: React.FC<MenuProps> = ({ language = 'en' }) => {
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${categoryFilter === category ? "bg-accent text-white" : "bg-white border border-border text-text-secondary"
                 }`}
             >
-              {category === "all" ? "All Items" : category}
+              {category === "all" ? t[language as keyof typeof t].allItems : category}
             </button>
           ))}
         </div>
@@ -154,7 +172,7 @@ const Menu: React.FC<MenuProps> = ({ language = 'en' }) => {
                       {getItemName(item)}
                     </h3>
                     <div className="flex gap-2 mt-1">
-                      <Badge variant="neutral">Page {item.page_number || '?'}</Badge>
+                      <Badge variant="neutral">{t[language as keyof typeof t].page} {item.page_number || '?'}</Badge>
                       <Badge variant="neutral">{item.category}</Badge>
                     </div>
                   </div>
@@ -162,56 +180,91 @@ const Menu: React.FC<MenuProps> = ({ language = 'en' }) => {
 
                 <div className="grid grid-cols-3 gap-2 bg-bg-subtle p-2 rounded-lg text-xs">
                   <div>
-                    <p className="text-text-secondary">Standard/Veg</p>
+                    <p className="text-text-secondary">{t[language as keyof typeof t].standardVeg}</p>
                     <p className="font-bold text-accent">{formatCurrency(item.price_standard)}</p>
                   </div>
                   <div>
-                    <p className="text-text-secondary">Chicken/Pork</p>
+                    <p className="text-text-secondary">{t[language as keyof typeof t].chickenPork}</p>
                     <p className="font-bold text-accent">{item.price_chicken_pork ? formatCurrency(item.price_chicken_pork) : '-'}</p>
                   </div>
                   <div>
-                    <p className="text-text-secondary">Seafood</p>
+                    <p className="text-text-secondary">{t[language as keyof typeof t].seafood}</p>
                     <p className="font-bold text-accent">{item.price_seafood ? formatCurrency(item.price_seafood) : '-'}</p>
                   </div>
                 </div>
               </div>
 
               <div className="flex lg:flex-col gap-2 lg:min-w-[140px]">
-                {/* Nouveau bouton pour activer/désactiver le plat */}
                 <Button
                   size="sm"
                   variant={item.is_available ? "outline" : "primary"}
                   onClick={() => handleToggleAvailability(item)}
                 >
-                  {item.is_available ? "Disable" : "Enable"}
+                  {item.is_available ? t[language as keyof typeof t].disable : t[language as keyof typeof t].enable}
                 </Button>
 
-                <Button size="sm" variant="outline" icon={<Edit className="w-4 h-4" />} onClick={() => handleEdit(item)}>Edit</Button>
-                <Button size="sm" variant="outline" icon={<Trash2 className="w-4 h-4" />} onClick={() => handleDelete(item)}>Delete</Button>
+                <Button size="sm" variant="outline" icon={<Edit className="w-4 h-4" />} onClick={() => handleEdit(item)}>{t[language as keyof typeof t].edit}</Button>
+                <Button size="sm" variant="outline" icon={<Trash2 className="w-4 h-4" />} onClick={() => handleDelete(item)}>{t[language as keyof typeof t].delete}</Button>
               </div>
             </div>
           </Card>
         ))}
       </div>
 
-      <MenuItemModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} mode="add" />
-      <MenuItemModal isOpen={showEditModal} item={selectedItem} onClose={() => { setShowEditModal(false); setSelectedItem(null); }} mode="edit" />
+      <MenuItemModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} mode="add" language={language} />
+      <MenuItemModal isOpen={showEditModal} item={selectedItem} onClose={() => { setShowEditModal(false); setSelectedItem(null); }} mode="edit" language={language} />
       <DeleteModal isOpen={showDeleteModal} item={selectedItem} onClose={() => { setShowDeleteModal(false); setSelectedItem(null); }} />
     </div>
   );
 };
 
-// 1. Définition de l'interface qui manquait (Erreur ligne 164)
 interface MenuItemModalProps {
   isOpen: boolean;
   item?: MenuItem | null;
   onClose: () => void;
   mode: "add" | "edit";
+  language?: 'en' | 'th';
 }
 
-const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, item, onClose, mode }) => {
+const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, item, onClose, mode, language = 'en' }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const modalT = {
+    en: {
+      addItem: 'Add Item',
+      editItem: 'Edit Item',
+      nameEn: 'Name (EN)',
+      nameTh: 'Name (Thai)',
+      category: 'Category',
+      pageNumber: 'Page Number',
+      priceStandard: 'Price Standard',
+      priceChickenPork: 'Price Chicken/Pork',
+      priceSeafood: 'Price Seafood',
+      description: 'Description',
+      imageUrl: 'Image URL',
+      cancel: 'Cancel',
+      create: 'Create Item',
+      save: 'Save Changes',
+    },
+    th: {
+      addItem: 'เพิ่มรายการ',
+      editItem: 'แก้ไขรายการ',
+      nameEn: 'ชื่อ (EN)',
+      nameTh: 'ชื่อ (ไทย)',
+      category: 'หมวดหมู่',
+      pageNumber: 'หมายเลขหน้า',
+      priceStandard: 'ราคามาตรฐาน',
+      priceChickenPork: 'ราคาไก่/หมู',
+      priceSeafood: 'ราคาอาหารทะเล',
+      description: 'คำอธิบาย',
+      imageUrl: 'URL รูปภาพ',
+      cancel: 'ยกเลิก',
+      create: 'สร้างรายการ',
+      save: 'บันทึกการเปลี่ยนแปลง',
+    }
+  };
+
   const [formData, setFormData] = useState({
     name: "",
     name_thai: "",
@@ -279,43 +332,54 @@ const MenuItemModal: React.FC<MenuItemModalProps> = ({ isOpen, item, onClose, mo
       is_available: formData.is_available,
     };
 
-    const success = mode === "add"
-      ? await createMenuItem(data)
-      : await updateMenuItem(item!.id, data);
+    let success = false;
+    if (mode === "add") {
+      const result = await createMenuItem(data);
+      success = !result.error;
+      if (result.error) setError(result.error.message || "Error adding item");
+    } else {
+      const result = await updateMenuItem(item!.id, data);
+      success = !result.error;
+      if (result.error) setError(result.error.message || "Error updating item");
+    }
 
     setLoading(false);
-    if (success) onClose(); else setError("Error saving item");
+    if (success) onClose();
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={mode === "add" ? "Add Item" : "Edit Item"} size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title={mode === "add" ? modalT[language as keyof typeof modalT].addItem : modalT[language as keyof typeof modalT].editItem} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <Alert type="error" message={error} />}
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Name (EN)" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-          <Input label="Name (Thai)" value={formData.name_thai} onChange={(e) => setFormData({ ...formData, name_thai: e.target.value })} />
+          <Input label={modalT[language as keyof typeof modalT].nameEn} value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+          <Input label={modalT[language as keyof typeof modalT].nameTh} value={formData.name_thai} onChange={(e) => setFormData({ ...formData, name_thai: e.target.value })} />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Category" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} />
-          <Input label="Page Number" type="number" value={formData.page_number} onChange={(e) => setFormData({ ...formData, page_number: e.target.value })} />
+          <Input label={modalT[language as keyof typeof modalT].category} value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} />
+          <Input label={modalT[language as keyof typeof modalT].pageNumber} type="number" value={formData.page_number} onChange={(e) => setFormData({ ...formData, page_number: e.target.value })} />
         </div>
         <div className="grid grid-cols-3 gap-4">
-          <Input label="Price Standard" type="number" step="0.01" value={formData.price_standard} onChange={(e) => setFormData({ ...formData, price_standard: e.target.value })} />
-          <Input label="Price Chicken/Pork" type="number" step="0.01" value={formData.price_chicken_pork} onChange={(e) => setFormData({ ...formData, price_chicken_pork: e.target.value })} />
-          <Input label="Price Seafood" type="number" step="0.01" value={formData.price_seafood} onChange={(e) => setFormData({ ...formData, price_seafood: e.target.value })} />
+          <Input label={modalT[language as keyof typeof modalT].priceStandard} type="number" step="0.01" value={formData.price_standard} onChange={(e) => setFormData({ ...formData, price_standard: e.target.value })} />
+          <Input label={modalT[language as keyof typeof modalT].priceChickenPork} type="number" step="0.01" value={formData.price_chicken_pork} onChange={(e) => setFormData({ ...formData, price_chicken_pork: e.target.value })} />
+          <Input label={modalT[language as keyof typeof modalT].priceSeafood} type="number" step="0.01" value={formData.price_seafood} onChange={(e) => setFormData({ ...formData, price_seafood: e.target.value })} />
         </div>
-        <Textarea label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-        <Input label="Image URL" value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} />
+        <Textarea label={modalT[language as keyof typeof modalT].description} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+        <Input label={modalT[language as keyof typeof modalT].imageUrl} value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} />
+        {formData.image_url && (
+          <div className="bg-bg-subtle rounded-lg overflow-hidden">
+            <img src={formData.image_url} alt="Preview" className="w-full h-40 object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+          </div>
+        )}
         <div className="flex gap-3 mt-6">
-          <Button type="button" variant="outline" onClick={onClose} fullWidth>Cancel</Button>
-          <Button type="submit" loading={loading} fullWidth>{mode === "add" ? "Create Item" : "Save Changes"}</Button>
+          <Button type="button" variant="outline" onClick={onClose} fullWidth>{modalT[language as keyof typeof modalT].cancel}</Button>
+          <Button type="submit" loading={loading} fullWidth>{mode === "add" ? modalT[language as keyof typeof modalT].create : modalT[language as keyof typeof modalT].save}</Button>
         </div>
       </form>
     </Modal>
   );
 };
 
-// 2. Ajout du composant DeleteModal qui manquait (Erreur ligne 159)
 interface DeleteModalProps {
   isOpen: boolean;
   item: MenuItem | null;
@@ -352,4 +416,5 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ isOpen, item, onClose }) => {
     </Modal>
   );
 };
+
 export default Menu;

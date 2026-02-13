@@ -185,9 +185,16 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
       revenue: 'Total Revenue',
       orders: 'Total Orders',
       avgOrder: 'Avg Order Value',
+      reportPeriod: 'Report Period',
       dailyRevenue: 'Daily Revenue',
       topItems: 'Top Items',
+      topSelling: 'Top Selling Items',
       orderType: 'Order Type Distribution',
+      noItems: 'No items sold yet',
+      days: 'Days',
+      quantity: 'Quantity',
+      revenue_label: 'Revenue',
+      revenueTrend: 'Revenue Trend',
     },
     th: {
       reports: 'รายงานและการวิเคราะห์',
@@ -199,9 +206,16 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
       revenue: 'รายได้ทั้งหมด',
       orders: 'คำสั่งซื้อทั้งหมด',
       avgOrder: 'ค่าเฉลี่ยคำสั่งซื้อ',
+      reportPeriod: 'ระยะเวลารายงาน',
       dailyRevenue: 'รายได้รายวัน',
       topItems: 'รายการอันดับต้น',
+      topSelling: 'รายการขายดี',
       orderType: 'การกระจายประเภทคำสั่งซื้อ',
+      noItems: 'ไม่มีรายการที่ขายแล้ว',
+      days: 'วัน',
+      quantity: 'จำนวน',
+      revenue_label: 'รายได้',
+      revenueTrend: 'แนวโน้มรายได้',
     }
   };
 
@@ -236,7 +250,7 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
             onClick={exportReport}
             variant="outline"
           >
-            Export
+            {translations.export}
           </Button>
         </div>
       </div>
@@ -253,7 +267,7 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
           <div className="text-2xl font-bold text-text mb-1">
             {formatCurrency(reportData.totalRevenue)}
           </div>
-          <p className="text-text-secondary text-sm">Total Revenue</p>
+          <p className="text-text-secondary text-sm">{translations.revenue}</p>
         </Card>
 
         <Card>
@@ -265,7 +279,7 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
           <div className="text-2xl font-bold text-text mb-1">
             {reportData.totalOrders}
           </div>
-          <p className="text-text-secondary text-sm">Total Orders</p>
+          <p className="text-text-secondary text-sm">{translations.orders}</p>
         </Card>
 
         <Card>
@@ -277,7 +291,7 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
           <div className="text-2xl font-bold text-text mb-1">
             {formatCurrency(reportData.avgOrderValue)}
           </div>
-          <p className="text-text-secondary text-sm">Avg Order Value</p>
+          <p className="text-text-secondary text-sm">{translations.avgOrder}</p>
         </Card>
 
         <Card>
@@ -287,9 +301,9 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
             </div>
           </div>
           <div className="text-2xl font-bold text-text mb-1">
-            {dateRange} Days
+            {dateRange} {translations.days}
           </div>
-          <p className="text-text-secondary text-sm">Report Period</p>
+          <p className="text-text-secondary text-sm">{translations.reportPeriod}</p>
         </Card>
       </div>
 
@@ -297,7 +311,7 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Revenue Trend */}
         <Card>
-          <h3 className="text-lg font-bold text-text mb-4">Revenue Trend</h3>
+          <h3 className="text-lg font-bold text-text mb-4">{translations.revenueTrend}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={reportData.dailyRevenue}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -317,7 +331,7 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
                 dataKey="revenue"
                 stroke="#FF6B6B"
                 strokeWidth={2}
-                name="Revenue"
+                name={translations.revenue_label}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -326,7 +340,7 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
         {/* Order Type Distribution */}
         <Card>
           <h3 className="text-lg font-bold text-text mb-4">
-            Order Type Distribution
+            {translations.orderType}
           </h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -358,13 +372,13 @@ const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
       {/* Top Items */}
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-text">Top Selling Items</h3>
+          <h3 className="text-lg font-bold text-text">{translations.topSelling}</h3>
           <Package className="w-5 h-5 text-accent" />
         </div>
 
         {reportData.topItems.length === 0 ? (
           <p className="text-text-secondary text-center py-8">
-            No items sold yet
+            {translations.noItems}
           </p>
         ) : (
           <div className="space-y-3">

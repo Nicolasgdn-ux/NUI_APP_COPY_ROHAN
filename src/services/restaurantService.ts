@@ -201,13 +201,13 @@ export const subscribeToMenuItems = (
 
 // Create menu item
 export const createMenuItem = async (item: Partial<MenuItem>) => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("menu_items")
     .insert([item])
     .select()
     .single();
 
-  return !error;
+  return { data, error };
 };
 
 // Update menu item
@@ -215,12 +215,14 @@ export const updateMenuItem = async (
   itemId: string,
   updates: Partial<MenuItem>
 ) => {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("menu_items")
     .update(updates)
-    .eq("id", itemId);
+    .eq("id", itemId)
+    .select()
+    .single();
 
-  return !error;
+  return { data, error };
 };
 
 // Toggle menu item availability (triggers real-time update for customers)

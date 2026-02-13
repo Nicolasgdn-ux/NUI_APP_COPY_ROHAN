@@ -144,9 +144,15 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
       total: 'Total',
       actions: 'Actions',
       viewDetails: 'View Details',
-      markFinished: 'Mark Finished',
-      finish: 'Finish',
+      markFinished: 'Mark Completed',
+      finish: 'Completed',
       reject: 'Reject',
+      paid: 'Paid',
+      protein: 'Protein',
+      addOns: 'Add-ons',
+      notes: 'Notes',
+      orderTable: 'Order Table',
+      takeaway: 'Takeaway',
       rejectOrder: 'Reject Order',
       reason: 'Reason (optional)',
       cancel: 'Cancel',
@@ -169,9 +175,15 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
       total: 'รวม',
       actions: 'การกระทำ',
       viewDetails: 'ดูรายละเอียด',
-      markFinished: 'ทำเสร็จ',
-      finish: 'ทำเสร็จ',
+      markFinished: 'ทำเสร็จแล้ว',
+      finish: 'ทำเสร็จแล้ว',
       reject: 'ปฏิเสธ',
+      paid: 'ชำระแล้ว',
+      protein: 'โปรตีน',
+      addOns: 'เพิ่มเติม',
+      notes: 'หมายเหตุ',
+      orderTable: 'คำสั่งซื้อโต๊ะ',
+      takeaway: 'ทำการสั่ง',
       rejectOrder: 'ปฏิเสธคำสั่งซื้อ',
       reason: 'เหตุผล (ไม่บังคับ)',
       cancel: 'ยกเลิก',
@@ -275,7 +287,7 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {order.is_paid && <Badge variant="success">Paid</Badge>}
+                        {order.is_paid && <Badge variant="success">{t[language].paid}</Badge>}
                         {getStatusBadge(order.status)}
                       </div>
                     </div>
@@ -285,8 +297,8 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
                         <Package className="w-4 h-4" />
                         <span>
                           {order.order_type} •{" "}
-                          {order.table_number && `Table ${order.table_number}`}
-                          {!order.table_number && "Takeaway"}
+                          {order.table_number && `${t[language].table} ${order.table_number}`}
+                          {!order.table_number && t[language].takeaway}
                         </span>
                       </div>
                       {order.customer_phone && (
@@ -307,7 +319,7 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
                         </div>
                       )}
                       <div className="flex items-center space-x-2 text-text-secondary">
-                        <span className="font-semibold text-text">1 item</span>
+                        <span className="font-semibold text-text">{t[language].items} 1</span>
                         <span>•</span>
                         <span className="font-bold text-text text-lg">
                           {formatCurrency(order.total || 0)}
@@ -321,15 +333,15 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
                           {item.quantity}x {item.name}
                         </p>
                         {item.selected_size?.name && (
-                          <p className="text-text-secondary">Protein: {item.selected_size.name}</p>
+                          <p className="text-text-secondary">{t[language].protein}: {item.selected_size.name}</p>
                         )}
                         {item.selected_addons && item.selected_addons.length > 0 && (
                           <p className="text-text-secondary">
-                            Add-ons: {item.selected_addons.map((a: any) => a.name).join(", ")}
+                            {t[language].addOns}: {item.selected_addons.map((a: any) => a.name).join(", ")}
                           </p>
                         )}
                         {item.special_instructions && (
-                          <p className="text-text-secondary">Notes: {item.special_instructions}</p>
+                          <p className="text-text-secondary">{t[language].notes}: {item.special_instructions}</p>
                         )}
                       </div>
                     )}
@@ -338,7 +350,7 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
                       <div className="flex items-start space-x-2 text-sm bg-bg-subtle rounded-lg p-3">
                         <MessageSquare className="w-4 h-4 text-accent-secondary mt-0.5" />
                         <div>
-                          <p className="font-medium text-text">Customer Notes:</p>
+                          <p className="font-medium text-text">{t[language].customerNotes}:</p>
                           <p className="text-text-secondary">
                             {order.customer_notes}
                           </p>
@@ -355,7 +367,7 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
                         fullWidth
                         onClick={() => handleFinishOrder(order)}
                       >
-                        Finished
+                        {t[language].finish}
                       </Button>
                       <Button
                         variant="outline"
@@ -366,7 +378,7 @@ const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
                           setShowRejectModal(true);
                         }}
                       >
-                        Cancel
+                        {t[language].cancel}
                       </Button>
                     </div>
                   )}
