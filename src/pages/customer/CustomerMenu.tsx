@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Package,
   AlertCircle,
+  Receipt,
 } from "lucide-react";
 import {
   Card,
@@ -25,6 +26,7 @@ import {
 import type { MenuItem, Order } from "../../config/supabase";
 import { formatCurrency } from "../../utils/helpers";
 import { supabase } from "../../config/supabase";
+import { TableBill } from "../../components/TableBill";
 
 interface CartItem extends MenuItem {
   quantity: number;
@@ -46,16 +48,16 @@ const CustomerMenu: React.FC = () => {
   // Ref for scrolling to table orders
   const tableOrdersRef = useRef<HTMLDivElement>(null);
 
-  // SessionID persistant - même personne = même sessionID (not used in orders for now)
-  // const [sessionId] = useState<string>(() => {
-  //   const key = `session_table_${tableId}`;
-  //   const existing = sessionStorage.getItem(key);
-  //   if (existing) return existing;
+  // SessionID persistent - persiste même après reconnexion
+  const [sessionId] = useState<string>(() => {
+    const key = `session_table_${tableId}`;
+    const existing = localStorage.getItem(key); // localStorage au lieu de sessionStorage
+    if (existing) return existing;
 
-  //   const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  //   sessionStorage.setItem(key, newId);
-  //   return newId;
-  // });
+    const newId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    localStorage.setItem(key, newId);
+    return newId;
+  });
 
   // Language selection with auto-detection
   const [language, setLanguage] = useState<'en' | 'th' | 'ru' | 'zh'>(() => {
@@ -75,6 +77,9 @@ const CustomerMenu: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('userLanguage', language);
   }, [language]);
+
+  // State for bill modal
+  const [showBill, setShowBill] = useState(false);
 
   const [restaurant, setRestaurant] = useState<any>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -509,6 +514,22 @@ const CustomerMenu: React.FC = () => {
                     )}
                   </span>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowBill(true)}
+                  icon={<Receipt className="w-4 h-4" />}
+                  fullWidth
+                  className="mt-3"
+                >
+                  {language === 'th'
+                    ? 'ดูใบเสร็จ'
+                    : language === 'ru'
+                      ? 'Посмотреть счёт'
+                      : language === 'zh'
+                        ? '查看账单'
+                        : 'View Bill'}
+                </Button>
               </div>
             )}
           </Card>
@@ -662,6 +683,7 @@ const CustomerMenu: React.FC = () => {
         setCart={setCart}
         restaurantId={restaurant.id}
         tableId={tableId}
+        sessionId={sessionId}
         isTableOrder={isTableOrder}
         onClose={() => setShowCheckout(false)}
         onSuccess={() => {
@@ -702,6 +724,17 @@ const CustomerMenu: React.FC = () => {
             </div>
           </button>
         </div>
+      )}
+
+      {/* Table Bill Modal */}
+      {showBill && isTableOrder && restaurant && (
+        <TableBill
+          isOpen={showBill}
+          onClose={() => setShowBill(false)}
+          tableNumber={parseInt(tableId || '0')}
+          restaurantId={restaurant.id}
+          language={language}
+        />
       )}
     </div>
   );
@@ -1145,6 +1178,7 @@ interface CheckoutModalProps {
   setCart: (cart: CartItem[]) => void;
   restaurantId: string;
   tableId: string;
+  sessionId: string;
   isTableOrder: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -1156,6 +1190,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
   setCart,
   restaurantId,
   tableId,
+  sessionId,
   isTableOrder,
   onClose,
   onSuccess,
@@ -1194,6 +1229,7 @@ const CheckoutModal: React.FC<CheckoutModalProps> = ({
           | "qr"
           | "counter",
         table_number: isTableOrder ? tableId : undefined,
+        session_id: isTableOrder ? sessionId : undefined,
         is_paid: false,
         items: [{
           menu_item_id: item.id,

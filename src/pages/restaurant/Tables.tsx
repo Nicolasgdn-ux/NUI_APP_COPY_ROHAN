@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { CheckCircle, Table as TableIcon } from "lucide-react";
+import { CheckCircle, Table as TableIcon, Receipt } from "lucide-react";
 import { Card, Button, Loading, Badge } from "../../components/ui";
-import { subscribeToOrders, markTablePaid } from "../../services/restaurantService";
+import { subscribeToOrders, markTablePaid, markSessionPaid } from "../../services/restaurantService";
 import type { Order } from "../../config/supabase";
 import { formatCurrency } from "../../utils/helpers";
+import { TableBill } from "../../components/TableBill";
 
 const Tables: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [selectedTable, setSelectedTable] = useState<number | null>(null);
+    const [restaurantId, setRestaurantId] = useState<string>("");
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         if (!user.restaurant_id) return;
+
+        setRestaurantId(user.restaurant_id);
 
         const subscription = subscribeToOrders(user.restaurant_id, (data) => {
             setOrders(data);
@@ -59,6 +64,25 @@ const Tables: React.FC = () => {
         );
     };
 
+    const handlePaySession = async (sessionId: string) => {
+        if (!restaurantId) return;
+
+        const result = await markSessionPaid(restaurantId, sessionId);
+        if (!result.success) {
+            alert("Failed to mark session as paid");
+            return;
+        }
+
+        // Optimistically update local state
+        setOrders((prev) =>
+            prev.map((order) =>
+                order.session_id === sessionId
+                    ? { ...order, is_paid: true }
+                    : order
+            )
+        );
+    };
+
     if (loading) {
         return <Loading text="Loading tables..." />;
     }
@@ -99,20 +123,44 @@ const Tables: React.FC = () => {
                                 {formatCurrency(total)}
                             </div>
 
-                            <Button
-                                variant={canPay ? "primary" : "ghost"}
-                                size="sm"
-                                onClick={() => handlePaid(table)}
-                                disabled={!canPay}
-                                icon={<CheckCircle className="w-4 h-4" />}
-                                fullWidth
-                            >
-                                {canPay ? "Already Paid" : "Complete orders first"}
-                            </Button>
+                            <div className="flex gap-2">
+                                {hasOrders && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSelectedTable(parseInt(table))}
+                                        icon={<Receipt className="w-4 h-4" />}
+                                        fullWidth
+                                    >
+                                        View Bill
+                                    </Button>
+                                )}
+                                <Button
+                                    variant={canPay ? "primary" : "ghost"}
+                                    size="sm"
+                                    onClick={() => handlePaid(table)}
+                                    disabled={!canPay}
+                                    icon={<CheckCircle className="w-4 h-4" />}
+                                    fullWidth
+                                >
+                                    {canPay ? "Already Paid" : "Complete orders first"}
+                                </Button>
+                            </div>
                         </Card>
                     );
                 })}
             </div>
+
+            {selectedTable && (
+                <TableBill
+                    isOpen={true}
+                    onClose={() => setSelectedTable(null)}
+                    tableNumber={selectedTable}
+                    restaurantId={restaurantId}
+                    onPaySession={handlePaySession}
+                    language="en"
+                />
+            )}
         </div>
     );
 };
