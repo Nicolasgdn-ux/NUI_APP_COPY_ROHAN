@@ -257,15 +257,17 @@ export const createOrder = async (order: Partial<Order>) => {
 // Get restaurant stats
 export const getRestaurantStats = async (restaurantId: string) => {
   try {
-    // Get today's date in Bangkok timezone (UTC+7)
+    // Get start of today in Bangkok timezone (UTC+7)
+    // Supabase stores timestamps in UTC, so we need to adjust
     const now = new Date();
-    const bangkokOffset = 7 * 60; // UTC+7 in minutes
-    const localOffset = now.getTimezoneOffset(); // Local offset in minutes
-    const bangkokTime = new Date(now.getTime() + (bangkokOffset + localOffset) * 60000);
+    const bangkokNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
 
-    // Set to start of day in Bangkok
-    const todayBangkok = new Date(bangkokTime);
-    todayBangkok.setHours(0, 0, 0, 0);
+    // Start of day in Bangkok
+    const startOfDayBangkok = new Date(bangkokNow);
+    startOfDayBangkok.setHours(0, 0, 0, 0);
+
+    // Convert back to UTC for Supabase query
+    const startOfDayUTC = new Date(startOfDayBangkok.getTime() - (7 * 60 * 60 * 1000));
 
     const [
       { data: todayOrders },
@@ -277,7 +279,7 @@ export const getRestaurantStats = async (restaurantId: string) => {
         .from("orders")
         .select("total, status")
         .eq("restaurant_id", restaurantId)
-        .gte("created_at", todayBangkok.toISOString()),
+        .gte("created_at", startOfDayUTC.toISOString()),
       supabase
         .from("orders")
         .select("*")

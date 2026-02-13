@@ -15,6 +15,7 @@ import {
   Table as TableIcon,
   FileText,
   Settings,
+  Globe,
 } from "lucide-react";
 import RestaurantHome from "./RestaurantHome";
 import Orders from "./Orders";
@@ -28,6 +29,21 @@ const RestaurantDashboard: React.FC = () => {
   const location = useLocation();
   const [user, setUser] = useState<any>(null);
   const [restaurant, setRestaurant] = useState<any>(null);
+
+  // Language state with auto-detection
+  const [language, setLanguage] = useState<'en' | 'th'>(() => {
+    const saved = localStorage.getItem('restaurantLanguage');
+    if (saved) return saved as 'en' | 'th';
+
+    // Auto-detect browser language
+    const browserLang = navigator.language || navigator.languages?.[0] || 'en';
+    const langCode = browserLang.toLowerCase().split('-')[0];
+    return langCode === 'th' ? 'th' : 'en';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('restaurantLanguage', language);
+  }, [language]);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -52,12 +68,12 @@ const RestaurantDashboard: React.FC = () => {
   if (!user) return null;
 
   const navItems = [
-    { path: "/restaurant", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/restaurant/orders", icon: ShoppingBag, label: "Orders" },
-    { path: "/restaurant/tables", icon: TableIcon, label: "Tables" },
-    { path: "/restaurant/menu", icon: UtensilsCrossed, label: "Menu" },
-    { path: "/restaurant/reports", icon: FileText, label: "Reports" },
-    { path: "/restaurant/settings", icon: Settings, label: "Settings" },
+    { path: "/restaurant", icon: LayoutDashboard, label: language === 'th' ? 'แดชบอร์ด' : 'Dashboard' },
+    { path: "/restaurant/orders", icon: ShoppingBag, label: language === 'th' ? 'คำสั่งซื้อ' : 'Orders' },
+    { path: "/restaurant/tables", icon: TableIcon, label: language === 'th' ? 'โต๊ะ' : 'Tables' },
+    { path: "/restaurant/menu", icon: UtensilsCrossed, label: language === 'th' ? 'เมนู' : 'Menu' },
+    { path: "/restaurant/reports", icon: FileText, label: language === 'th' ? 'รายงาน' : 'Reports' },
+    { path: "/restaurant/settings", icon: Settings, label: language === 'th' ? 'ตั้งค่า' : 'Settings' },
   ];
 
   return (
@@ -75,13 +91,24 @@ const RestaurantDashboard: React.FC = () => {
                 <p className="text-xs text-text-secondary">{user.email}</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center space-x-2 text-text-secondary hover:text-error transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Logout</span>
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Language Toggle */}
+              <button
+                onClick={() => setLanguage(language === 'en' ? 'th' : 'en')}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-300 hover:border-accent hover:bg-accent/5 transition-colors"
+              >
+                <Globe className="w-4 h-4 text-accent" />
+                <span className="text-sm font-medium">{language === 'en' ? 'ไทย' : 'EN'}</span>
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 text-text-secondary hover:text-error transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>{language === 'th' ? 'ออกจากระบบ' : 'Logout'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </nav>
@@ -97,8 +124,8 @@ const RestaurantDashboard: React.FC = () => {
                   key={item.path}
                   to={item.path}
                   className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${isActive
-                      ? "border-accent text-accent font-medium"
-                      : "border-transparent text-text-secondary hover:text-text"
+                    ? "border-accent text-accent font-medium"
+                    : "border-transparent text-text-secondary hover:text-text"
                     }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -113,12 +140,12 @@ const RestaurantDashboard: React.FC = () => {
       {/* Main Content */}
       <div className="container-custom py-8">
         <Routes>
-          <Route index element={<RestaurantHome />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="tables" element={<Tables />} />
-          <Route path="menu" element={<Menu />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="settings" element={<RestaurantSettings />} />
+          <Route index element={<RestaurantHome language={language} />} />
+          <Route path="orders" element={<Orders language={language} />} />
+          <Route path="tables" element={<Tables language={language} />} />
+          <Route path="menu" element={<Menu language={language} />} />
+          <Route path="reports" element={<Reports language={language} />} />
+          <Route path="settings" element={<RestaurantSettings language={language} />} />
         </Routes>
       </div>
     </div>

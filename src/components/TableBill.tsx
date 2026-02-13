@@ -177,8 +177,8 @@ export function TableBill({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-background rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-gray-700">
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-gray-700">
                     <div className="flex items-center gap-3">
@@ -209,8 +209,8 @@ export function TableBill({
                                 <div
                                     key={group.session_id || `no-session-${index}`}
                                     className={`border rounded-lg p-4 ${group.isPaid
-                                            ? 'border-success bg-success bg-opacity-5'
-                                            : 'border-gray-700 bg-gray-900 bg-opacity-30'
+                                        ? 'border-success bg-success bg-opacity-5'
+                                        : 'border-gray-700 bg-gray-900 bg-opacity-30'
                                         }`}
                                 >
                                     {/* Session Header */}

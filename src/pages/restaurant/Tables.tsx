@@ -6,7 +6,11 @@ import type { Order } from "../../config/supabase";
 import { formatCurrency } from "../../utils/helpers";
 import { TableBill } from "../../components/TableBill";
 
-const Tables: React.FC = () => {
+interface TablesProps {
+    language?: 'en' | 'th';
+}
+
+const Tables: React.FC<TablesProps> = ({ language = 'en' }) => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedTable, setSelectedTable] = useState<number | null>(null);
@@ -84,7 +88,7 @@ const Tables: React.FC = () => {
     };
 
     if (loading) {
-        return <Loading text="Loading tables..." />;
+        return <Loading text={language === 'th' ? 'กำลังโหลดโต๊ะ...' : 'Loading tables...'} />;
     }
 
     const tables = Array.from({ length: 50 }, (_, i) => String(i + 1));
@@ -92,9 +96,13 @@ const Tables: React.FC = () => {
     return (
         <div className="space-y-6">
             <div>
-                <h2 className="text-2xl font-bold text-text mb-2">Tables</h2>
+                <h2 className="text-2xl font-bold text-text mb-2">
+                    {language === 'th' ? 'โต๊ะ' : 'Tables'}
+                </h2>
                 <p className="text-text-secondary">
-                    Track unpaid totals by table and mark them as paid.
+                    {language === 'th'
+                        ? 'ติดตามยอดที่ยังไม่ได้จ่ายตามโต๊ะ และทำเครื่องหมายว่าจ่ายแล้ว'
+                        : 'Track unpaid totals by table and mark them as paid.'}
                 </p>
             </div>
 
@@ -112,10 +120,14 @@ const Tables: React.FC = () => {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     <TableIcon className="w-5 h-5 text-accent" />
-                                    <span className="font-semibold text-text">Table {table}</span>
+                                    <span className="font-semibold text-text">
+                                        {language === 'th' ? 'โต๊ะ' : 'Table'} {table}
+                                    </span>
                                 </div>
                                 {hasOrders && (
-                                    <Badge variant="warning">{count} orders</Badge>
+                                    <Badge variant="warning">
+                                        {count} {language === 'th' ? 'รายการ' : 'orders'}
+                                    </Badge>
                                 )}
                             </div>
 
@@ -132,7 +144,7 @@ const Tables: React.FC = () => {
                                         icon={<Receipt className="w-4 h-4" />}
                                         fullWidth
                                     >
-                                        View Bill
+                                        {language === 'th' ? 'ดูบิล' : 'View Bill'}
                                     </Button>
                                 )}
                                 <Button
@@ -143,7 +155,9 @@ const Tables: React.FC = () => {
                                     icon={<CheckCircle className="w-4 h-4" />}
                                     fullWidth
                                 >
-                                    {canPay ? "Already Paid" : "Complete orders first"}
+                                    {canPay
+                                        ? (language === 'th' ? 'จ่ายแล้ว' : 'Already Paid')
+                                        : (language === 'th' ? 'ต้องทำเสร็จก่อน' : 'Complete orders first')}
                                 </Button>
                             </div>
                         </Card>
@@ -158,7 +172,7 @@ const Tables: React.FC = () => {
                     tableNumber={selectedTable}
                     restaurantId={restaurantId}
                     onPaySession={handlePaySession}
-                    language="en"
+                    language={language === 'th' ? 'th' : 'en'}
                 />
             )}
         </div>
