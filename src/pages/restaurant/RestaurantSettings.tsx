@@ -5,7 +5,11 @@ import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "../../config/supabase";
 import type { Restaurant } from "../../config/supabase";
 
-const RestaurantSettings: React.FC = () => {
+interface RestaurantSettingsProps {
+  language?: 'en' | 'th';
+}
+
+const RestaurantSettings: React.FC<RestaurantSettingsProps> = ({ language = 'en' }) => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -65,12 +69,35 @@ const RestaurantSettings: React.FC = () => {
   };
 
   if (loading) {
-    return <Loading text="Loading settings..." />;
+    return <Loading text={language === 'th' ? 'กำลังโหลดการตั้งค่า...' : 'Loading settings...'} />;
   }
 
   if (error || !restaurant) {
-    return <Alert type="error" message={error || "Restaurant not found"} />;
+    return <Alert type="error" message={error || (language === 'th' ? 'ไม่พบร้านอาหาร' : 'Restaurant not found')} />;
   }
+
+  const t = {
+    en: {
+      settings: 'Settings',
+      manage: 'Manage your restaurant QR code and menu access',
+      qrCode: 'Menu QR Code',
+      qrDesc: 'Customers can scan this QR code to access your menu',
+      downloadQR: 'Download QR Code',
+      menuUrl: 'Menu URL',
+      copyUrl: 'Copy URL',
+    },
+    th: {
+      settings: 'การตั้งค่า',
+      manage: 'จัดการรหัส QR และการเข้าถึงเมนูของร้านอาหาร',
+      qrCode: 'รหัส QR เมนู',
+      qrDesc: 'ลูกค้าสามารถสแกนรหัส QR นี้เพื่อเข้าถึงเมนู',
+      downloadQR: 'ดาวน์โหลดรหัส QR',
+      menuUrl: 'URL เมนู',
+      copyUrl: 'คัดลอก URL',
+    }
+  };
+
+  const translations = t[language as keyof typeof t];
 
   const menuUrl = `${window.location.origin}/menu/${restaurant.slug}`;
 
@@ -78,9 +105,9 @@ const RestaurantSettings: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-text mb-2">Settings</h2>
+        <h2 className="text-2xl font-bold text-text mb-2">{translations.settings}</h2>
         <p className="text-text-secondary">
-          Manage your restaurant QR code and menu access
+          {translations.manage}
         </p>
       </div>
 
@@ -89,9 +116,9 @@ const RestaurantSettings: React.FC = () => {
         <div className="flex items-start space-x-2 mb-4">
           <QrCodeIcon className="w-6 h-6 text-accent" />
           <div>
-            <h3 className="text-xl font-bold text-text">Menu QR Code</h3>
+            <h3 className="text-xl font-bold text-text">{translations.qrCode}</h3>
             <p className="text-text-secondary text-sm">
-              Customers can scan this QR code to access your menu
+              {translations.qrDesc}
             </p>
           </div>
         </div>
@@ -114,7 +141,7 @@ const RestaurantSettings: React.FC = () => {
               onClick={downloadQRCode}
               fullWidth
             >
-              Download QR Code
+              {translations.downloadQR}
             </Button>
           </div>
 

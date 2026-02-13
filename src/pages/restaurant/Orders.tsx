@@ -25,7 +25,11 @@ import {
 import type { Order } from "../../config/supabase";
 import { formatDateTime, formatCurrency, playSound } from "../../utils/helpers";
 
-const Orders: React.FC = () => {
+interface OrdersProps {
+  language?: 'en' | 'th';
+}
+
+const Orders: React.FC<OrdersProps> = ({ language = 'en' }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -123,8 +127,64 @@ const Orders: React.FC = () => {
   };
 
   if (loading) {
-    return <Loading text="Loading orders..." />;
+    return <Loading text={language === 'th' ? 'กำลังโหลดคำสั่งซื้อ...' : 'Loading orders...'} />;
   }
+
+  // Translation strings
+  const t = {
+    en: {
+      orders: 'Orders',
+      pendingOrders: 'Pending Orders',
+      allOrders: 'All Orders',
+      noOrders: 'No orders found',
+      orderId: 'Order ID',
+      table: 'Table',
+      status: 'Status',
+      items: 'Items',
+      total: 'Total',
+      actions: 'Actions',
+      viewDetails: 'View Details',
+      markFinished: 'Mark Finished',
+      finish: 'Finish',
+      reject: 'Reject',
+      rejectOrder: 'Reject Order',
+      reason: 'Reason (optional)',
+      cancel: 'Cancel',
+      confirm: 'Confirm',
+      accepted: 'Accepted',
+      pending: 'Pending',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+      customerNotes: 'Customer Notes',
+    },
+    th: {
+      orders: 'คำสั่งซื้อ',
+      pendingOrders: 'คำสั่งซื้อที่รอดำเนินการ',
+      allOrders: 'คำสั่งซื้อทั้งหมด',
+      noOrders: 'ไม่พบคำสั่งซื้อ',
+      orderId: 'หมายเลขคำสั่งซื้อ',
+      table: 'โต๊ะ',
+      status: 'สถานะ',
+      items: 'รายการ',
+      total: 'รวม',
+      actions: 'การกระทำ',
+      viewDetails: 'ดูรายละเอียด',
+      markFinished: 'ทำเสร็จ',
+      finish: 'ทำเสร็จ',
+      reject: 'ปฏิเสธ',
+      rejectOrder: 'ปฏิเสธคำสั่งซื้อ',
+      reason: 'เหตุผล (ไม่บังคับ)',
+      cancel: 'ยกเลิก',
+      confirm: 'ยืนยัน',
+      accepted: 'ยอมรับแล้ว',
+      pending: 'รอดำเนินการ',
+      completed: 'เสร็จสิ้น',
+      cancelled: 'ยกเลิก',
+      customerNotes: 'หมายเหตุของลูกค้า',
+    }
+  };
+
+  const translations = t[language as keyof typeof t];
 
   const pendingCount = orders.filter(
     (o) => o.status === "pending" || o.status === "accepted"
@@ -135,14 +195,14 @@ const Orders: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-text mb-2">Orders</h2>
+          <h2 className="text-2xl font-bold text-text mb-2">{translations.orders}</h2>
           <p className="text-text-secondary">
-            Manage and track customer orders in real-time
+            {language === 'th' ? 'จัดการและติดตามคำสั่งซื้อลูกค้าแบบเรียลไทม์' : 'Manage and track customer orders in real-time'}
           </p>
         </div>
         {pendingCount > 0 && (
           <Badge variant="warning" className="text-lg px-4 py-2 animate-pulse">
-            {pendingCount} Pending
+            {pendingCount} {translations.pending}
           </Badge>
         )}
       </div>
@@ -150,24 +210,29 @@ const Orders: React.FC = () => {
       {/* Real-time indicator */}
       <div className="flex items-center space-x-2 text-sm text-success">
         <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
-        <span>Live order updates • Sound notifications enabled</span>
+        <span>{language === 'th' ? 'อัปเดตคำสั่งซื้อสดวิทยุ • เปิดใช้งานการแจ้งเตือนเสียง' : 'Live order updates • Sound notifications enabled'}</span>
       </div>
 
       {/* Status Filter */}
       <div className="flex flex-wrap gap-2">
-        {["pending", "completed", "cancelled"].map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
-              ? "bg-accent text-white"
-              : "bg-bg-subtle text-text-secondary hover:bg-border"
-              }`}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-            {status === "pending" && ` (${pendingCount})`}
-          </button>
-        ))}
+        {["pending", "completed", "cancelled"].map((status) => {
+          const statusLabel = status === 'pending' ? (language === 'th' ? 'รอดำเนินการ' : 'Pending')
+            : status === 'completed' ? (language === 'th' ? 'เสร็จสิ้น' : 'Completed')
+              : (language === 'th' ? 'ยกเลิก' : 'Cancelled');
+          return (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${statusFilter === status
+                ? "bg-accent text-white"
+                : "bg-bg-subtle text-text-secondary hover:bg-border"
+                }`}
+            >
+              {statusLabel}
+              {status === "pending" && ` (${pendingCount})`}
+            </button>
+          );
+        })}
       </div>
 
       {/* Orders List */}
@@ -175,10 +240,14 @@ const Orders: React.FC = () => {
         <Card className="text-center py-12">
           <Package className="w-16 h-16 text-text-secondary mx-auto mb-4 opacity-50" />
           <h3 className="text-xl font-semibold text-text mb-2">
-            No Orders Found
+            {translations.noOrders}
           </h3>
           <p className="text-text-secondary">
-            No {statusFilter} orders at the moment.
+            {language === 'th'
+              ? statusFilter === 'pending' ? 'ไม่มีคำสั่งซื้อที่รอดำเนินการในตอนนี้'
+                : statusFilter === 'completed' ? 'ไม่มีคำสั่งซื้อที่เสร็จสิ้นในตอนนี้'
+                  : 'ไม่มีคำสั่งซื้อที่ยกเลิกในตอนนี้'
+              : `No ${statusFilter} orders at the moment.`}
           </p>
         </Card>
       ) : (

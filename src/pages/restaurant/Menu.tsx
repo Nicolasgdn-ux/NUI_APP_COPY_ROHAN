@@ -20,7 +20,11 @@ import {
 import type { MenuItem } from "../../config/supabase";
 import { formatCurrency } from "../../utils/helpers";
 
-const Menu: React.FC = () => {
+interface MenuProps {
+  language?: 'en' | 'th';
+}
+
+const Menu: React.FC<MenuProps> = ({ language = 'en' }) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -79,24 +83,43 @@ const Menu: React.FC = () => {
     setShowDeleteModal(true);
   };
 
-  if (loading) return <Loading text="Loading menu..." />;
+  if (loading) return <Loading text={language === 'th' ? 'กำลังโหลดเมนู...' : 'Loading menu...'} />;
+
+  const t = {
+    en: {
+      menu: 'Menu Management',
+      manage: 'Manage your menu items and prices',
+      addItem: 'Add Item',
+      search: 'Search by name or Thai name...',
+      availability: 'Availability',
+      noItems: 'No menu items found',
+    },
+    th: {
+      menu: 'จัดการเมนู',
+      manage: 'จัดการรายการเมนูและราคา',
+      addItem: 'เพิ่มรายการ',
+      search: 'ค้นหาตามชื่อหรือชื่อไทย...',
+      availability: 'ความพร้อมใช้งาน',
+      noItems: 'ไม่พบรายการเมนู',
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-text mb-2">Menu Management</h2>
-          <p className="text-text-secondary">Manage your menu items and prices</p>
+          <h2 className="text-2xl font-bold text-text mb-2">{t[language as keyof typeof t].menu}</h2>
+          <p className="text-text-secondary">{t[language as keyof typeof t].manage}</p>
         </div>
         <Button icon={<Plus className="w-5 h-5" />} onClick={() => setShowAddModal(true)}>
-          Add Item
+          {t[language as keyof typeof t].addItem}
         </Button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <Input
-            placeholder="Search by name or Thai name..."
+            placeholder={t[language as keyof typeof t].search}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             icon={<Search className="w-5 h-5" />}

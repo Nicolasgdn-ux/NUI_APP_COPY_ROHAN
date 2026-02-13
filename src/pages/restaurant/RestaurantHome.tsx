@@ -4,23 +4,13 @@ import { Card, Badge, Loading } from "../../components/ui";
 import { getRestaurantStats } from "../../services/restaurantService";
 import { formatCurrency } from "../../utils/helpers";
 
-const RestaurantHome: React.FC = () => {
+interface RestaurantHomeProps {
+  language?: 'en' | 'th';
+}
+
+const RestaurantHome: React.FC<RestaurantHomeProps> = ({ language = 'en' }) => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState<'en' | 'th'>(() => {
-    const saved = localStorage.getItem('restaurantLanguage');
-    if (saved) return saved as 'en' | 'th';
-
-    // Auto-detect browser language
-    const browserLang = navigator.language || navigator.languages?.[0] || 'en';
-    const langCode = browserLang.toLowerCase().split('-')[0];
-
-    return langCode === 'th' ? 'th' : 'en';
-  });
-
-  useEffect(() => {
-    localStorage.setItem('restaurantLanguage', language);
-  }, [language]);
 
   useEffect(() => {
     loadStats();
@@ -106,19 +96,7 @@ const RestaurantHome: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Language Toggle */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => setLanguage(language === 'en' ? 'th' : 'en')}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border hover:bg-bg-subtle transition-colors"
-        >
-          <Globe className="w-4 h-4" />
-          <span className="text-sm font-medium">{language === 'en' ? 'ไทย' : 'EN'}</span>
-        </button>
-      </div>
-
-      {/* Header */}
+    <div className="space-y-6">      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-text mb-2">{t.dashboard}</h2>
         <p className="text-text-secondary">

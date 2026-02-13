@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { CheckCircle, Table as TableIcon, Receipt } from "lucide-react";
 import { Card, Button, Loading, Badge } from "../../components/ui";
-import { subscribeToOrders, markTablePaid, markSessionPaid } from "../../services/restaurantService";
+import { subscribeToOrders, markTablePaid, markSessionPaid, markAllTablePaid } from "../../services/restaurantService";
 import type { Order } from "../../config/supabase";
 import { formatCurrency } from "../../utils/helpers";
 import { TableBill } from "../../components/TableBill";
@@ -87,6 +87,25 @@ const Tables: React.FC<TablesProps> = ({ language = 'en' }) => {
         );
     };
 
+    const handleAllTablePaid = async (tableNumber: string) => {
+        if (!restaurantId) return;
+
+        const result = await markAllTablePaid(restaurantId, tableNumber);
+        if (!result.success) {
+            alert("Failed to mark all table orders as paid");
+            return;
+        }
+
+        // Optimistically update local state
+        setOrders((prev) =>
+            prev.map((order) =>
+                order.table_number === tableNumber
+                    ? { ...order, is_paid: true }
+                    : order
+            )
+        );
+    };
+
     if (loading) {
         return <Loading text={language === 'th' ? 'กำลังโหลดโต๊ะ...' : 'Loading tables...'} />;
     }
@@ -135,7 +154,7 @@ const Tables: React.FC<TablesProps> = ({ language = 'en' }) => {
                                 {formatCurrency(total)}
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-col">
                                 {hasOrders && (
                                     <Button
                                         variant="ghost"
@@ -147,18 +166,30 @@ const Tables: React.FC<TablesProps> = ({ language = 'en' }) => {
                                         {language === 'th' ? 'ดูบิล' : 'View Bill'}
                                     </Button>
                                 )}
-                                <Button
-                                    variant={canPay ? "primary" : "ghost"}
-                                    size="sm"
-                                    onClick={() => handlePaid(table)}
-                                    disabled={!canPay}
-                                    icon={<CheckCircle className="w-4 h-4" />}
-                                    fullWidth
-                                >
-                                    {canPay
-                                        ? (language === 'th' ? 'จ่ายแล้ว' : 'Already Paid')
-                                        : (language === 'th' ? 'ต้องทำเสร็จก่อน' : 'Complete orders first')}
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant={canPay ? "primary" : "ghost"}
+                                        size="sm"
+                                        onClick={() => handlePaid(table)}
+                                        disabled={!canPay}
+                                        icon={<CheckCircle className="w-4 h-4" />}
+                                        fullWidth
+                                    >
+                                        {canPay
+                                            ? (language === 'th' ? 'จ่ายแล้ว' : 'Already Paid')
+                                            : (language === 'th' ? 'ต้องทำเสร็จก่อน' : 'Complete orders first')}
+                                    </Button>
+                                    {hasOrders && (
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => handleAllTablePaid(table)}
+                                            fullWidth
+                                        >
+                                            {language === 'th' ? 'ล้าง' : 'All Paid'}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         </Card>
                     );

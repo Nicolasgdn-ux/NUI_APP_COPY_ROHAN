@@ -126,6 +126,7 @@ export function TableBill({
                 .select('*')
                 .eq('restaurant_id', restaurantId)
                 .eq('table_number', tableNumber)
+                .eq('is_paid', false)
                 .order('created_at', { ascending: true });
 
             if (error) throw error;

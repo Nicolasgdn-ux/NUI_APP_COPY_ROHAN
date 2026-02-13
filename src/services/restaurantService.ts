@@ -336,3 +336,17 @@ export const markSessionPaid = async (
 
   return { success: !error, error };
 };
+
+// Mark all orders for a specific table as paid
+export const markAllTablePaid = async (
+  restaurantId: string,
+  tableNumber: string
+) => {
+  const { error } = await supabase
+    .from("orders")
+    .update({ is_paid: true })
+    .eq("restaurant_id", restaurantId)
+    .eq("table_number", tableNumber);
+
+  return { success: !error, error };
+};

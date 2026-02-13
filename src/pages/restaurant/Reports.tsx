@@ -35,7 +35,11 @@ interface ReportData {
   orderTypeDistribution: { type: string; count: number }[];
 }
 
-const Reports: React.FC = () => {
+interface ReportsProps {
+  language?: 'en' | 'th';
+}
+
+const Reports: React.FC<ReportsProps> = ({ language = 'en' }) => {
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [dateRange, setDateRange] = useState<"7" | "30" | "90">("30");
@@ -159,14 +163,49 @@ const Reports: React.FC = () => {
   };
 
   if (loading) {
-    return <Loading text="Loading reports..." />;
+    return <Loading text={language === 'th' ? 'กำลังโหลดรายงาน...' : 'Loading reports...'} />;
   }
 
   if (!reportData) {
     return (
-      <div className="text-center text-text-secondary">No data available</div>
+      <div className="text-center text-text-secondary">
+        {language === 'th' ? 'ไม่มีข้อมูลพร้อมใช้งาน' : 'No data available'}
+      </div>
     );
   }
+
+  const t = {
+    en: {
+      reports: 'Reports & Analytics',
+      track: 'Track your sales performance and trends',
+      last7: 'Last 7 Days',
+      last30: 'Last 30 Days',
+      last90: 'Last 90 Days',
+      export: 'Export',
+      revenue: 'Total Revenue',
+      orders: 'Total Orders',
+      avgOrder: 'Avg Order Value',
+      dailyRevenue: 'Daily Revenue',
+      topItems: 'Top Items',
+      orderType: 'Order Type Distribution',
+    },
+    th: {
+      reports: 'รายงานและการวิเคราะห์',
+      track: 'ติดตามประสิทธิภาพการขายและแนวโน้ม',
+      last7: 'ล่าสุด 7 วัน',
+      last30: 'ล่าสุด 30 วัน',
+      last90: 'ล่าสุด 90 วัน',
+      export: 'ส่งออก',
+      revenue: 'รายได้ทั้งหมด',
+      orders: 'คำสั่งซื้อทั้งหมด',
+      avgOrder: 'ค่าเฉลี่ยคำสั่งซื้อ',
+      dailyRevenue: 'รายได้รายวัน',
+      topItems: 'รายการอันดับต้น',
+      orderType: 'การกระจายประเภทคำสั่งซื้อ',
+    }
+  };
+
+  const translations = t[language as keyof typeof t];
 
   const COLORS = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#FFA07A", "#98D8C8"];
 
@@ -176,10 +215,10 @@ const Reports: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-text mb-2">
-            Reports & Analytics
+            {translations.reports}
           </h2>
           <p className="text-text-secondary">
-            Track your sales performance and trends
+            {translations.track}
           </p>
         </div>
         <div className="flex gap-3">
@@ -188,9 +227,9 @@ const Reports: React.FC = () => {
             onChange={(e) => setDateRange(e.target.value as "7" | "30" | "90")}
             className="input"
           >
-            <option value="7">Last 7 Days</option>
-            <option value="30">Last 30 Days</option>
-            <option value="90">Last 90 Days</option>
+            <option value="7">{translations.last7}</option>
+            <option value="30">{translations.last30}</option>
+            <option value="90">{translations.last90}</option>
           </select>
           <Button
             icon={<Download className="w-5 h-5" />}
